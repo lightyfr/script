@@ -83,7 +83,7 @@ const effects = {
 const meta = {
   home: {
     path: "/",
-    title: "Once UI for Next.js",
+    title: "Script AI",
     description: "An open-source design system and component library for Next.js that emphasizes easy styling and accessibility in UI development.",
     image: "/og/home.jpg",
     canonical: "https://once-ui.com",
@@ -99,7 +99,7 @@ const meta = {
 const schema = {
   logo: "",
   type: "Organization",
-  name: "Once UI",
+  name: "Script AI",
   description: meta.home.description,
   email: "lorant@once-ui.com",
 };
