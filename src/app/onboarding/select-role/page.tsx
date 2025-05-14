@@ -21,11 +21,11 @@ export default function SelectRolePage() {
         variant: 'success',
         message: `Role selected: ${role}. Redirecting...`,
       });
-      // Redirect to the appropriate dashboard based on role
+      // Redirect to the appropriate profile completion page or dashboard
       if (role === 'student') {
-        router.push('/student/dashboard');
+        router.push('/onboarding/student-profile');
       } else if (role === 'professor') {
-        router.push('/professor/dashboard');
+        router.push('/onboarding/professor-profile');
       }
     } catch (error) {
       console.error('Failed to update role:', error);
