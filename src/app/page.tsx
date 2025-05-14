@@ -2,8 +2,8 @@
 "use client";
 
 import type React from "react";
-// Removed useState for now, will add back if needed for new components
-// import { useState } from "react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Heading,
   Text,
@@ -48,6 +48,36 @@ import { Header } from "./Header";
 
 export default function Home() {
   const { addToast } = useToast(); // Keep for potential notifications
+
+  const dynamicPhrases = [
+    "in Computer Science",
+    "at Stanford University",
+    "for AI Research",
+    "in Biomedical Engineering",
+    "at MIT Research",
+    "for Quantum Physics",
+    "in Neuroscience",
+    "at UC Berkeley",
+    "for Cutting-Edge Projects"
+  ];
+  const [phraseIndex, setPhraseIndex] = useState(0);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setPhraseIndex(prevIndex => (prevIndex + 1) % dynamicPhrases.length);
+    }, 2800); // Change every 2.8 seconds
+
+    return () => clearInterval(intervalId); // Cleanup on unmount
+  }, []); // Empty dependency array ensures this runs once on mount and cleans up on unmount
+
+  const currentPhrase = dynamicPhrases[phraseIndex];
+
+  // Animation variants for the dynamic text
+  const textAnimationVariants = {
+    initial: { opacity: 0, y: 10 }, // Start transparent and slightly down
+    animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+    exit: { opacity: 0, y: -10, transition: { duration: 0.3, ease: "easeIn" } }, // Exit transparent and slightly up
+  };
 
   // Removed old state variables: selectedValue, selectedRange, dialog states, email, password, tags, twoFA, intro
 
@@ -104,12 +134,12 @@ export default function Home() {
         <Column
           fillWidth
           horizontal="center"
-          gap="32" // Gap within Hero section
-          paddingTop="104" // Padding top for Hero
-          paddingX="32" // Horizontal padding for Hero
-          position="relative" // For potential background elements
+          gap="24" // Adjusted gap for a tighter feel with the new badge
+          paddingTop="104" // Kept user's paddingTop adjustment
+          paddingX="32"
+          position="relative"
         >
-          <Background // Example Background, can be customized
+          <Background
             mask={{
               x: 80,
               y: 0,
@@ -128,12 +158,43 @@ export default function Home() {
               colorEnd: "static-transparent",
             }}
           />
-          <Heading  paddingTop="80" wrap="balance" variant="display-strong-xl" align="center" marginBottom="16">
-            Connect with Research Opportunities, Effortlessly.
+
+          {/* BADGE / ACCENT ABOVE HEADING */}
+          <InlineCode marginTop="xl" radius="full" shadow="m" fit paddingX="16" paddingY="8" background="accent-alpha-weak" onBackground="accent-strong" marginBottom="16">
+            AI-Powered Outreach ✨
+          </InlineCode>
+
+          <Heading paddingTop="0" wrap="balance" variant="display-strong-xl" align="center" marginBottom="16"> {/* Removed paddingTop="80", badge adds space now*/}
+            Connect with Professors{" "}
+            <AnimatePresence mode="wait"> {/* mode="wait" ensures one animation finishes before the next starts */}
+              <motion.span
+                key={currentPhrase} // Important: key change triggers the animation
+                variants={textAnimationVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                style={{
+                  display: "inline-block", // Needed for transforms and proper layout
+                  verticalAlign: "middle", // Aligns nicely with the static text part
+                  // This attempts to replicate Once UI's onBackground="accent-strong".
+                  // You might need to adjust the CSS variable (--accent-strong)
+                  // or use a direct color value from your theme if this doesn't pick up the correct color.
+                  color: "var(--accent-strong)",
+                }}
+              >
+                {currentPhrase}
+              </motion.span>
+            </AnimatePresence>
           </Heading>
-          <Text align="center" variant="body-default-xl" onBackground="neutral-weak">
-            Script helps you find and connect with professors, automating personalized email outreach to land your dream research position.
-          </Text>
+
+          {/* CONCISE HERO DESCRIPTION */}
+          <Column maxWidth="m" horizontal="center"> {/* Added Column wrapper for Text for maxWidth control */}
+            <Text align="center" variant="body-default-l" onBackground="neutral-weak"> {/* Removed maxWidth from Text */}
+              Mass send personalized emails to land your dream research position.
+            </Text>
+          </Column>
+
+      <Column paddingTop="s">
           <Button
             id="getStartedHero"
             label="Get Started Now"
@@ -142,10 +203,11 @@ export default function Home() {
             arrowIcon // Adds a subtle arrow
             onClick={() => addToast({ variant: "success", message: "Get Started Clicked!"})} // Changed variant to success
           />
+          </Column>
         </Column>
 
         {/* PROBLEM / PAIN POINTS SECTION */}
-        <Column fillWidth paddingX="32" gap="24" horizontal="center" position="relative">
+        <Column fillWidth paddingX="32" paddingTop="xl" gap="24" horizontal="center" position="relative">
           <Heading as="h2" variant="display-default-l" align="center">
             Tired of the Research Grind?
           </Heading>
@@ -153,17 +215,17 @@ export default function Home() {
             Finding and contacting professors for research spots is time-consuming and often frustrating.
           </Text>
           <Row fillWidth gap="24" mobileDirection="column" horizontal="center">
-            <Card fillWidth direction="column" padding="24" radius="l" border="neutral-alpha-weak" horizontal="center">
+            <Card fillWidth direction="column" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
               <Icon name="search" size="xl" onBackground="accent-strong" marginBottom="16"/>
               <Heading as="h3" variant="heading-default-m" align="center">Endless Searching</Heading>
               <Text align="center" onBackground="neutral-medium">Spending hours finding professor contacts and research interests.</Text>
             </Card>
-            <Card fillWidth direction="column" padding="24" radius="l" border="neutral-alpha-weak" horizontal="center">
+            <Card fillWidth direction="column" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
               <Icon name="mail" size="xl" onBackground="accent-strong" marginBottom="16"/>
               <Heading as="h3" variant="heading-default-m" align="center">Impersonal Outreach</Heading>
               <Text align="center" onBackground="neutral-medium">Struggling to write compelling, personalized emails that get noticed.</Text>
             </Card>
-            <Card fillWidth direction="column" padding="24" radius="l" border="neutral-alpha-weak" horizontal="center">
+            <Card fillWidth direction="column" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
               <Icon name="chartLow" size="xl" onBackground="accent-strong" marginBottom="16"/>
               <Heading as="h3" variant="heading-default-m" align="center">Low Response Rates</Heading>
               <Text align="center" onBackground="neutral-medium">Sending emails into the void with little to no feedback.</Text>
@@ -182,7 +244,7 @@ export default function Home() {
             grid={{
               display: true,
               width: "0.25rem",
-              color: "neutral-alpha-medium",
+              color: "neutral-alpha-weak",
               height: "0.25rem",
             }}
           />
@@ -193,7 +255,7 @@ export default function Home() {
           <Row fillWidth vertical="center" gap="48" mobileDirection="column-reverse">
             <Column fillWidth gap="16">
               <Icon name="sparkles" size="l" onBackground="brand-strong" />
-              <Heading as="h3" variant="heading-default-l">Mass Personalization, Simplified</Heading>
+              <Heading as="h3" variant="heading-strong-l">Mass Personalization, Simplified</Heading>
               <Text onBackground="neutral-weak" variant="body-default-l">
                 Craft a master template and let Script automatically personalize emails for each professor using their specific details. Save hours, not just minutes.
               </Text>
