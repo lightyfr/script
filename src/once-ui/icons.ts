@@ -1,4 +1,6 @@
 import { IconType } from "react-icons";
+import { MdOutlineSocialDistance } from "react-icons/md";
+import { FaChartArea } from "react-icons/fa6";
 
 import {
   HiChevronUp,
@@ -70,7 +72,9 @@ export const iconLibrary: Record<string, IconType> = {
   visa: RiVisaLine,
   security: HiOutlineShieldCheck,
   sparkle: HiOutlineSparkles,
-  computer: HiOutlineComputerDesktop
+  computer: HiOutlineComputerDesktop,
+  socialDistance: MdOutlineSocialDistance,
+  chartLow: FaChartArea,
 };
 
 export type IconLibrary = typeof iconLibrary;
