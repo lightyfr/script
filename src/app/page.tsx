@@ -41,6 +41,7 @@ import {
   // StyleOverlay,
   // CompareImage,
   ThemeSwitcher,
+  RevealFx,
 } from "@/once-ui/components";
 // import { CodeBlock, MediaUpload } from "@/once-ui/modules"; // Remove if not used for code or media
 import { ScrollToTop } from "@/once-ui/components/ScrollToTop";
@@ -86,18 +87,18 @@ export default function Home() {
   const links = [ // Keeping this for the footer, might adjust later
     {
       href: "https://once-ui.com/docs/theming",
-      title: "Themes",
-      description: "Style your app in minutes",
+      title: "Get Started",
+      description: "Create an account with Script",
     },
     {
       href: "https://once-ui.com/docs/flexComponent",
-      title: "Layout",
-      description: "Build responsive layouts",
+      title: "Enter Your Details",
+      description: "Fill out your research interests, skills, and add a resume",
     },
     {
       href: "https://once-ui.com/docs/typography",
-      title: "Typography",
-      description: "Scale text automatically",
+      title: "Let Script Work",
+      description: "Script will find professors and send emails, all while you sleep",
     },
   ];
 
@@ -127,9 +128,25 @@ export default function Home() {
         horizontal="center"
         // border="neutral-alpha-weak" // Optional border for main content container
         fillWidth
-        gap="128" // Increased gap between sections
+        gap="160" // Increased gap between sections
         paddingBottom="80" // Padding at the bottom of the main content
       >
+                  
+          <Background
+            mask={{
+              x: 0,
+              y: 50,
+              radius: 100,
+            }}
+            position="absolute"
+            zIndex={-1}
+            grid={{
+              display: true,
+              width: "0.25rem",
+              color: "neutral-alpha-weak",
+              height: "0.25rem",
+            }}
+          />
         {/* HERO SECTION */}
         <Column
           fillWidth
@@ -160,10 +177,13 @@ export default function Home() {
           />
 
           {/* BADGE / ACCENT ABOVE HEADING */}
+          <RevealFx>
           <InlineCode marginTop="xl" radius="full" shadow="m" fit paddingX="16" paddingY="8" background="accent-alpha-weak" onBackground="accent-strong" marginBottom="16">
             AI-Powered Outreach ✨
           </InlineCode>
+          </RevealFx>
 
+<RevealFx delay={0.1}>
           <Heading paddingTop="0" wrap="balance" variant="display-strong-xl" align="center" marginBottom="16"> {/* Removed paddingTop="80", badge adds space now*/}
             Connect with Professors{" "}
             <AnimatePresence mode="wait"> {/* mode="wait" ensures one animation finishes before the next starts */}
@@ -186,15 +206,21 @@ export default function Home() {
               </motion.span>
             </AnimatePresence>
           </Heading>
+          </RevealFx>
 
           {/* CONCISE HERO DESCRIPTION */}
+          <RevealFx delay={0.2}>
           <Column maxWidth="m" horizontal="center"> {/* Added Column wrapper for Text for maxWidth control */}
             <Text align="center" variant="body-default-l" onBackground="neutral-weak"> {/* Removed maxWidth from Text */}
-              Mass send personalized emails to land your dream research position.
+              Mass send <Text onBackground="neutral-strong" variant="body-strong-m">personalized </Text> emails to land your <Text onBackground="neutral-strong" variant="body-strong-m">dream </Text> research position.
             </Text>
           </Column>
+          </RevealFx>
+
+          {/* HERO IMAGE */}
 
       <Column paddingTop="s">
+        <RevealFx delay={0.3}>
           <Button
             id="getStartedHero"
             label="Get Started Now"
@@ -203,54 +229,80 @@ export default function Home() {
             arrowIcon // Adds a subtle arrow
             onClick={() => addToast({ variant: "success", message: "Get Started Clicked!"})} // Changed variant to success
           />
+          </RevealFx>
           </Column>
         </Column>
 
         {/* PROBLEM / PAIN POINTS SECTION */}
         <Column fillWidth paddingX="32" paddingTop="xl" gap="24" horizontal="center" position="relative">
-          <Heading as="h2" variant="display-default-l" align="center">
-            Tired of the Research Grind?
-          </Heading>
+            <Heading as="h2" variant="display-default-l" align="center">
+            Tired of the{" "}
+            <InlineCode
+              paddingX="12"
+              paddingY="4"
+              radius="xl"
+              background="surface"
+              border="neutral-alpha-medium"
+              onBackground="neutral-strong"
+            >
+              Research Grind
+            </InlineCode>
+            ?
+            </Heading>
           <Text align="center" onBackground="neutral-weak" marginBottom="32">
-            Finding and contacting professors for research spots is time-consuming and often frustrating.
+            Finding and contacting professors for research is <Text onBackground="neutral-strong" variant="body-strong-m">time-consuming </Text>and often <Text onBackground="neutral-strong" variant="body-strong-m">frustrating </Text>.
           </Text>
           <Row fillWidth gap="24" mobileDirection="column" horizontal="center">
-            <Card fillWidth direction="column" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
+            <Card fill direction="column" paddingY="48" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
               <Icon name="search" size="xl" onBackground="accent-strong" marginBottom="16"/>
-              <Heading as="h3" variant="heading-default-m" align="center">Endless Searching</Heading>
+              <Column gap="4">
+              <Heading as="h3" variant="heading-strong-m" align="center">Endless Searching</Heading>
               <Text align="center" onBackground="neutral-medium">Spending hours finding professor contacts and research interests.</Text>
+              </Column>
             </Card>
-            <Card fillWidth direction="column" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
-              <Icon name="mail" size="xl" onBackground="accent-strong" marginBottom="16"/>
-              <Heading as="h3" variant="heading-default-m" align="center">Impersonal Outreach</Heading>
+            <Card fill direction="column" paddingY="48" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
+              <Icon name="socialDistance" size="xl" onBackground="accent-strong" marginBottom="16"/>
+              <Column gap="4">
+              <Heading as="h3" variant="heading-strong-m" align="center">Impersonal Outreach</Heading>
               <Text align="center" onBackground="neutral-medium">Struggling to write compelling, personalized emails that get noticed.</Text>
+              </Column>
             </Card>
-            <Card fillWidth direction="column" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
+            <Card fill direction="column" paddingY="48" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
               <Icon name="chartLow" size="xl" onBackground="accent-strong" marginBottom="16"/>
-              <Heading as="h3" variant="heading-default-m" align="center">Low Response Rates</Heading>
+             <Column gap="4">
+              <Heading as="h3" variant="heading-strong-m" align="center">Low Response Rates</Heading>
               <Text align="center" onBackground="neutral-medium">Sending emails into the void with little to no feedback.</Text>
+              </Column>
             </Card>
           </Row>
         </Column>
 
         {/* SOLUTION / FEATURES SECTION */}
-        <Column fillWidth paddingX="32" gap="48" horizontal="center" position="relative" paddingY="80">
+        <Column fillWidth paddingX="64" gap="64" horizontal="center" position="relative" paddingY="104">
            <Background
             mask={{
               x: 0,
-              y: 48,
+              y: 90,
+              radius: 100,
             }}
             position="absolute"
-            grid={{
+            gradient={{
               display: true,
-              width: "0.25rem",
-              color: "neutral-alpha-weak",
-              height: "0.25rem",
+              tilt: -5,
+              height: 50,
+              width: 75,
+              x: 0,
+              opacity: 80,
+              y: 70,
+              colorStart: "accent-solid-medium",
+              colorEnd: "static-transparent",
             }}
           />
-          <Heading as="h2" variant="display-default-l" align="center">
-            Script Streamlines Your Success
+          <Row>
+          <Heading as="h2" variant="display-default-l">
+            Script Streamlines <Text as="span" variant="display-strong-l">Your</Text> Success
           </Heading>
+          </Row>
           {/* Feature 1 */}
           <Row fillWidth vertical="center" gap="48" mobileDirection="column-reverse">
             <Column fillWidth gap="16">
@@ -294,63 +346,21 @@ export default function Home() {
         </Column>
 
         {/* HOW IT WORKS SECTION */}
-        <Column fillWidth paddingX="32" gap="32" horizontal="center" position="relative">
+        <Column fillWidth paddingX="32" paddingY="64" gap="32" horizontal="center" position="relative">
           <Heading as="h2" variant="display-default-l" align="center">
-            Get Started in 3 Simple Steps
+            Get Started in <InlineCode
+              paddingX="12"
+              paddingY="4"
+              radius="xl"
+              background="surface"
+              border="neutral-alpha-medium"
+              onBackground="neutral-strong"
+            >
+              3 Simple Steps
+            </InlineCode>
           </Heading>
           <Row fillWidth gap="24" mobileDirection="column" horizontal="stretch" paddingTop="32">
-            <Card fillWidth direction="column" padding="32" radius="l" border="neutral-alpha-weak" horizontal="start" gap="16">
-              <Row vertical="center" gap="16" marginBottom="8">
-                <InlineCode paddingX="12" paddingY="8" radius="full" background="brand-alpha-weak" onBackground="brand-strong">1</InlineCode>
-                <Heading as="h3" variant="heading-default-m">Import or Find Contacts</Heading>
-              </Row>
-              <Text onBackground="neutral-medium">Easily upload your list of professors or use our tools to discover relevant contacts (coming soon!).</Text>
-            </Card>
-            <Card fillWidth direction="column" padding="32" radius="l" border="neutral-alpha-weak" horizontal="start" gap="16">
-             <Row vertical="center" gap="16" marginBottom="8">
-                <InlineCode paddingX="12" paddingY="8" radius="full" background="brand-alpha-weak" onBackground="brand-strong">2</InlineCode>
-                <Heading as="h3" variant="heading-default-m">Craft Your Email Template</Heading>
-              </Row>
-              <Text onBackground="neutral-medium">Use our intuitive editor to create a compelling base email with dynamic placeholders for personalization.</Text>
-            </Card>
-            <Card fillWidth direction="column" padding="32" radius="l" border="neutral-alpha-weak" horizontal="start" gap="16">
-              <Row vertical="center" gap="16" marginBottom="8">
-                <InlineCode paddingX="12" paddingY="8" radius="full" background="brand-alpha-weak" onBackground="brand-strong">3</InlineCode>
-                <Heading as="h3" variant="heading-default-m">Launch & Track</Heading>
-              </Row>
-              <Text onBackground="neutral-medium">Send your personalized emails at scale and monitor their performance through your dashboard.</Text>
-            </Card>
-          </Row>
-        </Column>
-
-        {/* FINAL CALL TO ACTION SECTION */}
-        <Column
-          fillWidth
-          horizontal="center"
-          gap="24"
-          paddingY="80" // Ample padding
-          paddingX="32"
-          position="relative"
-          background="accent-alpha-weak"
-          radius="xl"
-        >
-          <Heading wrap="balance" variant="display-default-l" align="center" onBackground="accent-strong">
-            Ready to Land Your Dream Research Role?
-          </Heading>
-          <Text align="center" variant="body-default-xl" onBackground="accent-weak" marginBottom="16">
-            Stop waiting, start connecting. Join Script today and take the first step towards your research career.
-          </Text>
-          <Button
-            id="getStartedCTA"
-            label="Sign Up for Free"
-            size="l"
-            variant="primary"
-            onClick={() => addToast({ variant: "success", message: "Sign Up Clicked!"})}
-          />
-        </Column>
-
-        {/* FOOTER SECTION - Reusing parts of the old footer for now */}
-        <Row fillWidth overflow="hidden" marginTop="64">
+            <Row fillWidth overflow="hidden">
           <Row maxWidth="32" borderTop="neutral-alpha-weak" borderBottom="neutral-medium" />
           <Row fillWidth border="neutral-alpha-weak" mobileDirection="column">
             {links.map((link, index) => (
@@ -379,13 +389,21 @@ export default function Home() {
           </Row>
           <Row maxWidth="32" borderTop="neutral-alpha-weak" borderBottom="neutral-medium" />
         </Row>
-        <Row
-          position="relative"
-          as="footer"
+          </Row>
+        </Column>
+
+        {/* FINAL CALL TO ACTION SECTION */}
+        <Column
           fillWidth
-          paddingX="l"
-          paddingTop="128"
-          paddingBottom="80"
+          horizontal="center"
+          gap="24"
+          paddingY="80" // Ample padding
+          paddingX="32"
+          marginX="32"
+          position="relative"
+          background="surface"
+          border="neutral-alpha-weak"
+          radius="xl"
         >
           <Background
             borderTop="brand-alpha-strong"
@@ -393,6 +411,7 @@ export default function Home() {
               x: 50,
               y: 0,
             }}
+            zIndex={-1}
             position="absolute"
             grid={{
               display: true,
@@ -401,28 +420,20 @@ export default function Home() {
               height: "0.25rem",
             }}
           />
-          <Column
-            position="relative"
-            textVariant="body-default-xs"
-            onBackground="neutral-medium"
-            horizontal="center"
-            align="center"
-            fillWidth
-            gap="16"
-          >
-            <Logo wordmark={true} size="s" />
-            <Text size="m">
-              <Text onBackground="neutral-weak">© {new Date().getFullYear()} /</Text> Script
-            </Text>
-            <SmartLink href="/privacy-policy">
-              Privacy Policy
-            </SmartLink>
-            <SmartLink href="/terms-of-service">
-              Terms of Service
-            </SmartLink>
-            <ThemeSwitcher marginTop="24"/>
-          </Column>
-        </Row>
+          <Heading wrap="balance" variant="display-default-l" align="center" onBackground="accent-strong">
+            Ready to Land Your Dream Research Role?
+          </Heading>
+          <Text align="center" variant="body-default-xl" onBackground="neutral-weak" marginBottom="16">
+            Stop waiting, start connecting.
+          </Text>
+          <Button
+            id="getStartedCTA"
+            label="Sign Up for Free"
+            size="l"
+            variant="primary"
+            onClick={() => addToast({ variant: "success", message: "Sign Up Clicked!"})}
+          />
+        </Column>
       </Column>
     </Column>
   );
