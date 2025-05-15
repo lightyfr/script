@@ -4,6 +4,7 @@
 import React from "react";
 import { Header } from "@/app/Header";
 import { Column, Row, Card, Heading, Text, Button, Icon, useToast } from "@/once-ui/components";
+import { LineChart } from "@/once-ui/modules/data/LineChart";
 
 export default function StudentDashboard() {
   const { addToast } = useToast();
@@ -16,13 +17,22 @@ export default function StudentDashboard() {
 
   return (
     <Column fillWidth paddingX="l" gap="32">
-      <Header />
-
       <Column gap="16">
         <Heading variant="display-strong-m">Welcome Back, Student!</Heading>
         <Text variant="body-default-m">Here's an overview of your Script activity.</Text>
       </Column>
 
+        <LineChart
+            data-viz="divergent"
+              fill
+              minHeight={20}
+              data={[{ name: "Jan", value: 20 }, { name: "Feb", value: 30 }, { name: "Mar", value: 50 }]}
+              series={[{ key: "value", color: "brand-strong" }]}
+              title="Monthly Activity"
+              description="This chart shows your activity over the last three months."
+              labels="both"
+              curveType="natural"/>
+              
       <Row fillWidth gap="24" mobileDirection="column">
         {stats.map((stat) => (
           <Card
@@ -45,6 +55,7 @@ export default function StudentDashboard() {
       </Row>
 
       <Column fillWidth gap="16">
+      
         <Heading variant="heading-strong-l">Quick Actions</Heading>
         <Row gap="16">
           <Button
