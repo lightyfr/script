@@ -9,13 +9,16 @@ import React, {
   ReactNode,
 } from "react";
 import classNames from "classnames";
-import { Flex, Text } from ".";
+import { Flex, Text, Icon } from ".";
 import styles from "./Input.module.scss";
 import useDebounce from "../hooks/useDebounce";
+import { IconName } from "../icons";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   id: string;
   label: string;
+  // optional icon displayed at end of input
+  icon?: IconName;
   height?: "s" | "m";
   error?: boolean;
   errorMessage?: ReactNode;
@@ -52,6 +55,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       style,
       hasPrefix,
       hasSuffix,
+      icon,
       labelAsPlaceholder = false,
       children,
       onFocus,
@@ -178,9 +182,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             )}
             {children}
           </Flex>
-          {hasSuffix && (
+          {(hasSuffix || icon) && (
             <Flex paddingRight="12" className={styles.suffix} position="static">
               {hasSuffix}
+              {icon && <Icon name={icon} size="xs" onBackground="neutral-medium" />}
             </Flex>
           )}
         </Flex>

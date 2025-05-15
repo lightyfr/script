@@ -24,7 +24,7 @@ import {
   } from '@clerk/nextjs'
 // Define menu groups for the MegaMenu
 const menuGroups: MenuGroup[] = [
-  { label: "About", href: "/about" },
+  { label: "Dashboard", href: "/dashboard" },
   { label: "Articles", href: "/articles" },
   { label: "Projects", href: "/projects" },
   { label: "Careers", href: "/careers" },

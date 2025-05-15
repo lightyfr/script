@@ -16,7 +16,7 @@ interface TagInputProps extends Omit<InputProps, "onChange" | "value"> {
 }
 
 const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
-  ({ value, onChange, label, placeholder, ...inputProps }, ref) => {
+  ({ value, onChange, label, icon, placeholder, ...inputProps }, ref) => {
     const [inputValue, setInputValue] = useState("");
     const [isFocused, setIsFocused] = useState(false);
 
@@ -51,6 +51,7 @@ const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
       <Input
         ref={ref}
         label={label}
+        icon={icon}
         placeholder={placeholder}
         labelAsPlaceholder
         value={inputValue}
