@@ -11,12 +11,13 @@ import {
   Text,
   Input,
   Textarea,
-  // TagInput, // Assuming Once UI might have a TagInput, if not, we'll use Textarea for interests
+  TagInput, // Assuming Once UI might have a TagInput, if not, we'll use Textarea for interests
   useToast,
   Spinner // For loading state
 } from '@/once-ui/components';
 import { updateStudentProfile, getStudentProfile } from './actions'; // Server actions to be created
 import type { Database } from '@/database.types';
+import { MediaUpload } from '@/once-ui/modules';
 
 // Define a type for the profile data to ensure type safety
 export type StudentProfileData = {
@@ -35,7 +36,7 @@ export default function StudentProfilePage() {
 
   const [name, setName] = useState('');
   const [school, setSchool] = useState('');
-  const [interestsInput, setInterestsInput] = useState(''); // For comma-separated interests
+  const [interestsInput, setInterestsInput] = useState<string[]>([]); // For TagInput, use array of strings
   const [resumeUrl, setResumeUrl] = useState('');
   const [bio, setBio] = useState('');
 
@@ -47,7 +48,7 @@ export default function StudentProfilePage() {
         if (profile) {
           setName(profile.name || '');
           setSchool(profile.school || '');
-          setInterestsInput((profile.interests || []).join(', '));
+          setInterestsInput(profile.interests || []);
           setResumeUrl(profile.resumeUrl || '');
           setBio(profile.bio || '');
         }
@@ -66,11 +67,10 @@ export default function StudentProfilePage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     startTransition(async () => {
-      const interestsArray = interestsInput.split(',').map(interest => interest.trim()).filter(interest => interest !== '');
       const profileData: StudentProfileData = {
         name,
         school,
-        interests: interestsArray,
+        interests: interestsInput,
         resumeUrl,
         bio,
       };
@@ -103,54 +103,41 @@ export default function StudentProfilePage() {
 
   return (
     <Column fillWidth vertical="center" horizontal="center" padding="l" gap="32" paddingTop="xl">
-      <Column>
+      <Column gap='16'>
       <Heading variant="display-default-l" align="center">
         Complete Your Student Profile
       </Heading>
-      <Text align="center" onBackground="neutral-weak" maxWidth="s">
+      <Text align="center" onBackground="neutral-weak">
         Tell us more about yourself to help us find the best research opportunities for you.
       </Text>
       </Column>
-      <Column border='neutral-weak' maxWidth="l" fillWidth padding="32" radius="l" shadow="s">
+      <Column border='neutral-weak' maxWidth="s" fillWidth padding="32" radius="l" shadow="s">
         <form onSubmit={handleSubmit}>
-          <Column gap="24" fillWidth>
+          <Column gap="24" fillWidth padding='s'>
             <Input
+              id="name"
               label="Full Name"
-              placeholder="Enter your full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
               autoFocus
             />
             <Input
+              id="school"
               label="School/University"
-              placeholder="Enter your school or university name"
               value={school}
               onChange={(e) => setSchool(e.target.value)}
               required
             />
-            <Textarea
-              label="Research Interests (comma-separated)"
-              placeholder="e.g., Machine Learning, Neuroscience, Quantum Physics"
+            <TagInput
+              id='interests'
+              icon='arrowDown'
+              label="Research Interests"
               value={interestsInput}
-              onChange={(e) => setInterestsInput(e.target.value)}
-              rows={3}
-              required
+              onChange={setInterestsInput}
             />
-            <Input
-              label="Resume/CV URL (Optional)"
-              type="url"
-              placeholder="https://example.com/your-resume.pdf"
-              value={resumeUrl}
-              onChange={(e) => setResumeUrl(e.target.value)}
-            />
-            <Textarea
-              label="Short Bio (Optional)"
-              placeholder="Briefly describe your academic background and research goals."
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={5}
-            />
+            <Heading>Resume</Heading>
+            <MediaUpload/>
             <Button 
               type="submit" 
               label={isPending ? 'Saving...' : 'Save Profile & Continue'} 

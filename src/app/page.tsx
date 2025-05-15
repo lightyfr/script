@@ -313,9 +313,9 @@ export default function Home() {
               </Text>
               <Button variant="secondary" label="Learn about Personalization" arrowIcon href="#"/>
             </Column>
-            <Column fillWidth horizontal="center" vertical="center">
+            <Column fillWidth radius="xl" border="neutral-alpha-medium" horizontal="center" vertical="center">
               {/* Placeholder for an image or an abstract visual */}
-              <TiltFx aspectRatio="4/3" radius="xl" border="accent-alpha-weak" overflow="hidden">
+              <TiltFx aspectRatio="4/3" fill radius="xl" border="accent-alpha-weak" overflow="hidden">
                  <Column fill horizontal="center" vertical="center" background="surface" padding="32">
                     <Icon name="mailBulk" size="xl" onBackground="accent-strong"/>
                     <Text marginTop="16" onBackground="neutral-medium">Visual of email personalization</Text>
@@ -325,10 +325,10 @@ export default function Home() {
           </Row>
           {/* Feature 2 */}
           <Row fillWidth vertical="center" gap="48" mobileDirection="column">
-             <Column fillWidth horizontal="center" vertical="center">
+             <Column background="surface" minHeight="s" radius="xl" border="neutral-alpha-medium" width="s" horizontal="center" vertical="center">
                {/* Placeholder for an image or an abstract visual */}
-              <TiltFx aspectRatio="4/3" radius="xl" border="accent-alpha-weak" overflow="hidden">
-                 <Column fill horizontal="center" vertical="center" background="surface" padding="32">
+              <TiltFx aspectRatio="4/3" fillHeight radius="xl">
+                 <Column fill horizontal="center" vertical="center" padding="32">
                     <Icon name="checklist" size="xl" onBackground="accent-strong"/>
                     <Text marginTop="16" onBackground="neutral-medium">Visual of tracking dashboard</Text>
                  </Column>
