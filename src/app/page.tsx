@@ -122,7 +122,7 @@ export default function Home() {
       <Header/>
       <Column
         as="main"
-        maxWidth="l" // Max width for the main content container
+        paddingX="l"
         position="relative"
         radius="xl"
         horizontal="center"
@@ -141,7 +141,7 @@ export default function Home() {
             position="absolute"
             zIndex={-1}
             grid={{
-              display: true,
+              display: false,
               width: "0.25rem",
               color: "neutral-alpha-weak",
               height: "0.25rem",
@@ -361,8 +361,8 @@ export default function Home() {
           </Heading>
           <Row fillWidth gap="24" mobileDirection="column" horizontal="stretch" paddingTop="32">
             <Row fillWidth overflow="hidden">
-          <Row maxWidth="32" borderTop="neutral-alpha-weak" borderBottom="neutral-medium" />
-          <Row fillWidth border="neutral-alpha-weak" mobileDirection="column">
+          <Row maxWidth="32" borderTop="neutral-alpha-medium" borderBottom="neutral-alpha-medium" />
+          <Row fillWidth border="neutral-alpha-medium" mobileDirection="column">
             {links.map((link, index) => (
               <Card
                 key={link.href}
@@ -372,7 +372,7 @@ export default function Home() {
                 gap="8"
                 background="page"
                 direction="column"
-                borderRight={index < links.length - 1 ? "neutral-alpha-weak" : undefined}
+                borderRight={index < links.length - 1 ? "neutral-alpha-medium" : undefined}
                 border={undefined}
               >
                 <Row fillWidth center gap="12">
@@ -387,7 +387,7 @@ export default function Home() {
               </Card>
             ))}
           </Row>
-          <Row maxWidth="32" borderTop="neutral-alpha-weak" borderBottom="neutral-medium" />
+          <Row maxWidth="32" borderTop="neutral-alpha-medium" borderBottom="neutral-alpha-medium" />
         </Row>
           </Row>
         </Column>

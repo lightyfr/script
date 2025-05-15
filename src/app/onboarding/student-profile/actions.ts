@@ -8,14 +8,14 @@ import type { StudentProfileData } from './page'; // Import the type from the pa
 
 // Helper function to create Supabase client with Clerk token
 async function createSupabaseClientWithClerkToken() {
-  const { getToken } = auth();
-  const clerkToken = await getToken();
+    const authInstance = auth();
+    const clerkToken = await (await authInstance).getToken();
 
   if (!clerkToken) {
     throw new Error('Clerk token not available. User might not be fully authenticated.');
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -123,4 +123,4 @@ export async function updateStudentProfile(profileData: StudentProfileData): Pro
   }
 
   return { success: true };
-} 
+}

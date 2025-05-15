@@ -103,15 +103,17 @@ export default function StudentProfilePage() {
 
   return (
     <Column fillWidth vertical="center" horizontal="center" padding="l" gap="32" paddingTop="xl">
+      <Column>
       <Heading variant="display-default-l" align="center">
         Complete Your Student Profile
       </Heading>
       <Text align="center" onBackground="neutral-weak" maxWidth="s">
         Tell us more about yourself to help us find the best research opportunities for you.
       </Text>
-      <Card fillWidth maxWidth="m" padding="32" radius="l" shadow="s">
+      </Column>
+      <Column border='neutral-weak' maxWidth="l" fillWidth padding="32" radius="l" shadow="s">
         <form onSubmit={handleSubmit}>
-          <Column gap="24">
+          <Column gap="24" fillWidth>
             <Input
               label="Full Name"
               placeholder="Enter your full name"
@@ -159,7 +161,7 @@ export default function StudentProfilePage() {
             />
           </Column>
         </form>
-      </Card>
+      </Column>
     </Column>
   );
 } 
