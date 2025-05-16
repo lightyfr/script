@@ -8,7 +8,7 @@ import { ChartCard } from "@/app/components/chartCard";
 export default function StudentDashboard() {
   const { addToast } = useToast();
 
-  const stats = [
+  const stats: Array<{ icon: string; label: string; value: string | number; variant: "success" | "info" | "warning" | "danger" }> = [
     { icon: "mailBulk", label: "Emails Sent", value: 120, variant: "success" },
     { icon: "sparkles", label: "Templates Created", value: 5, variant: "info" },
     { icon: "activity", label: "Response Rate", value: "35%", variant: "warning" },
