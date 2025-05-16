@@ -116,7 +116,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
           {user?.firstName || 'User'}
         </Text>
         </Row>
+        {hasSuper && (
         <Tag variant="brand" label="Pro"/>
+        )}
       </Row>
       <Line />
       <Row padding="4">
