@@ -4,6 +4,8 @@ import { FaChartArea } from "react-icons/fa6";
 import { FaUserGraduate } from "react-icons/fa";
 import { FaChalkboardTeacher } from "react-icons/fa";
 import { MdKeyboardDoubleArrowDown } from "react-icons/md";
+import { RiUserSettingsLine } from "react-icons/ri";
+import { FaSignOutAlt } from "react-icons/fa";
 
 import {
   HiChevronUp,
@@ -91,6 +93,8 @@ export const iconLibrary: Record<string, IconType> = {
   stats: ImStatsDots,
   mail: HiOutlineMailOpen,
   energy: SlEnergy,
+  user: RiUserSettingsLine,
+  signOut: FaSignOutAlt,
 };
 
 export type IconLibrary = typeof iconLibrary;

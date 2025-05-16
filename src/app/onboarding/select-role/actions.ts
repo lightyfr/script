@@ -40,7 +40,7 @@ export async function updateUserRole(role: 'student' | 'professor') {
 
   const cookieStore = cookies();
 
-  const supabase = createServerClient<Database>(
+  const supabase: ReturnType<typeof createServerClient<Database>> = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -82,6 +82,8 @@ export async function updateUserRole(role: 'student' | 'professor') {
       { 
         id: clerkUserId, 
         email: clerkUserEmail, 
+        firstName: null, 
+        lastName: null,
         // name and school can be populated later during profile completion
       },
       { onConflict: 'id' } // If ID exists, do nothing (or update if needed, but here we just ensure existence)
@@ -95,7 +97,11 @@ export async function updateUserRole(role: 'student' | 'professor') {
   // 2. Update the user's role in the public.users table
   const { data: updatedUser, error: userUpdateError } = await supabase
     .from('users')
-    .update({ role })
+    .update({
+      role,
+      firstName: null,
+      lastName: null
+    })
     .eq('id', clerkUserId)
     .select()
     .single();
