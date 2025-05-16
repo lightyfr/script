@@ -15,10 +15,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <Row>
                 <Sidebar
                     items={[
-                        { icon: 'dashboard', tooltip: 'Refresh' },
-                        { icon: 'stats', tooltip: 'Scroll to Top' },
-                        { icon: 'mail', tooltip: 'Search' },
-                        { icon: 'chalkboardTeacher', tooltip: 'Settings' },
+                        { icon: 'dashboard', tooltip: 'Dashboard' },
+                        { icon: 'stats', tooltip: 'Stats' },
+                        { icon: 'mail', tooltip: 'Your Mail' },
+                        { icon: 'chalkboardTeacher', tooltip: 'Connections' },
                     ]}
                 />
                 <Column paddingLeft='xl' style={{ flex: 1 }}>

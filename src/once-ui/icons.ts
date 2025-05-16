@@ -42,7 +42,7 @@ import { LuLayoutDashboard } from "react-icons/lu";
 import { FaDiscord, FaGithub, FaGoogle } from "react-icons/fa6";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa6";
 import { HiOutlineMailOpen } from "react-icons/hi";
-
+import { SlEnergy } from "react-icons/sl";
 import { LuChevronsLeftRight } from "react-icons/lu";
 import { arrow } from "@floating-ui/react-dom";
 import { ImStatsDots } from "react-icons/im";
@@ -90,6 +90,7 @@ export const iconLibrary: Record<string, IconType> = {
   dashboard: LuLayoutDashboard,
   stats: ImStatsDots,
   mail: HiOutlineMailOpen,
+  energy: SlEnergy,
 };
 
 export type IconLibrary = typeof iconLibrary;

@@ -23,6 +23,7 @@ export default function StudentDashboard() {
       </Column>
 
       <LineChart
+        border="neutral-alpha-weak"
         data-viz="divergent"
         fill
         minHeight={20}
