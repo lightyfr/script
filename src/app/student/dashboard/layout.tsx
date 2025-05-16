@@ -20,7 +20,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                         { icon: 'chalkboardTeacher', tooltip: 'Connections' },
                     ]}
                 />
-                <Column paddingLeft='xl' style={{ flex: 1 }}>
+                <Column paddingLeft='104' style={{ flex: 1 }}>
                     {children}
                 </Column>
             </Row>
