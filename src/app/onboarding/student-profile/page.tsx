@@ -15,13 +15,14 @@ import {
   useToast,
   Spinner // For loading state
 } from '@/once-ui/components';
-import { updateStudentProfile, getStudentProfile } from './actions'; // Server actions to be created
+import { updateStudentProfile, getStudentProfile, uploadResume } from './actions'; // Server actions to be created
 import type { Database } from '@/database.types';
 import { MediaUpload } from '@/once-ui/modules';
 
 // Define a type for the profile data to ensure type safety
 export type StudentProfileData = {
-  name: string;
+  firstName: string;
+  lastName: string;
   school: string;
   interests: string[]; // Storing interests as an array of strings
   resumeUrl: string;
@@ -34,7 +35,8 @@ export default function StudentProfilePage() {
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true); // For initial data loading
 
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [school, setSchool] = useState('');
   const [interestsInput, setInterestsInput] = useState<string[]>([]); // For TagInput, use array of strings
   const [resumeUrl, setResumeUrl] = useState('');
@@ -46,7 +48,8 @@ export default function StudentProfilePage() {
       try {
         const profile = await getStudentProfile();
         if (profile) {
-          setName(profile.name || '');
+          setFirstName(profile.firstName || '');
+          setLastName(profile.lastName || '');
           setSchool(profile.school || '');
           setInterestsInput(profile.interests || []);
           setResumeUrl(profile.resumeUrl || '');
@@ -68,7 +71,8 @@ export default function StudentProfilePage() {
     event.preventDefault();
     startTransition(async () => {
       const profileData: StudentProfileData = {
-        name,
+        firstName,
+        lastName,
         school,
         interests: interestsInput,
         resumeUrl,
@@ -92,6 +96,22 @@ export default function StudentProfilePage() {
     });
   };
   
+  const handleResumeUpload = async (file: File) => {
+    try {
+      setIsLoading(true);
+      const url = await uploadResume(file);
+      setResumeUrl(url);
+    } catch (error) {
+      console.error('Error uploading resume:', error);
+      addToast({
+        variant: 'danger',
+        message: 'Failed to upload resume. Please try again.'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Column fillWidth fillHeight vertical="center" horizontal="center" padding="l">
@@ -114,14 +134,25 @@ export default function StudentProfilePage() {
       <Column border='neutral-weak' maxWidth="s" fillWidth padding="32" radius="l" shadow="s">
         <form onSubmit={handleSubmit}>
           <Column gap="24" fillWidth padding='s'>
-            <Input
-              id="name"
-              label="Full Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+          <Row fillWidth gap='s'>
+          <Input
+              id="firstName"
+              label="First Name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
               required
               autoFocus
             />
+            <Input
+              id="lastName"
+              label="Last Name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+              autoFocus
+            />
+          </Row>
+            
             <Input
               id="school"
               label="School/University"
@@ -137,7 +168,7 @@ export default function StudentProfilePage() {
               onChange={setInterestsInput}
             />
             <Heading>Resume</Heading>
-            <MediaUpload/>
+            <MediaUpload pdfMode onFileUpload={handleResumeUpload}/>
             <Button 
               type="submit" 
               label={isPending ? 'Saving...' : 'Save Profile & Continue'} 
@@ -151,4 +182,4 @@ export default function StudentProfilePage() {
       </Column>
     </Column>
   );
-} 
+}

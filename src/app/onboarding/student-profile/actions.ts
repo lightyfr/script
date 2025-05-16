@@ -1,5 +1,6 @@
 'use server';
 
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { auth, currentUser } from '@clerk/nextjs/server';
@@ -48,7 +49,7 @@ export async function getStudentProfile(): Promise<Partial<StudentProfileData> |
 
   const { data: userData, error: userError } = await supabase
     .from('users')
-    .select('name, school')
+    .select('firstName, lastName, school')
     .eq('id', clerkUserId)
     .single();
 
@@ -69,7 +70,8 @@ export async function getStudentProfile(): Promise<Partial<StudentProfileData> |
   }
   
   return {
-    name: userData?.name || '',
+    firstName: userData?.firstName || '',
+    lastName: userData?.lastName || '',
     school: userData?.school || '',
     interests: studentData?.interests || [],
     resumeUrl: studentData?.resume_url || '',
@@ -85,17 +87,17 @@ export async function updateStudentProfile(profileData: StudentProfileData): Pro
   const clerkUserId = user.id;
   const supabase = await createSupabaseClientWithClerkToken();
 
-  const { name, school, interests, resumeUrl, bio } = profileData;
+  const { firstName, lastName, school, interests, resumeUrl, bio } = profileData;
 
   // Validate inputs (basic example, add more robust validation as needed)
-  if (!name || name.trim() === '') throw new Error('Name is required.');
+  if (!firstName || firstName.trim() === '') throw new Error('Name is required.');
   if (!school || school.trim() === '') throw new Error('School is required.');
   if (!interests || interests.length === 0) throw new Error('At least one interest is required.');
 
   // Update public.users table
   const { error: userUpdateError } = await supabase
     .from('users')
-    .update({ name, school, updated_at: new Date().toISOString() })
+    .update({ firstName, lastName, school, updated_at: new Date().toISOString() })
     .eq('id', clerkUserId);
 
   if (userUpdateError) {
@@ -123,4 +125,44 @@ export async function updateStudentProfile(profileData: StudentProfileData): Pro
   }
 
   return { success: true };
+}
+
+export async function uploadResume(file: File): Promise<string> {
+  const user = await currentUser();
+  if (!user?.id) {
+    throw new Error('User not authenticated.');
+  }
+  const clerkUserId = user.id;
+  const supabase = await createSupabaseClientWithClerkToken();
+  
+  // Create a unique filename using the user ID and timestamp
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${clerkUserId}_${Date.now()}.${fileExt}`;
+  const filePath = `${clerkUserId}/${fileName}`;
+  
+  // Convert file to arrayBuffer for upload
+  const arrayBuffer = await file.arrayBuffer();
+  const fileData = new Uint8Array(arrayBuffer);
+  
+  // Upload file to Supabase Storage
+  const { error } = await supabase
+    .storage
+    .from('student-resumes') // Make sure this bucket exists in your Supabase project
+    .upload(filePath, fileData, {
+      contentType: file.type,
+      upsert: true
+    });
+  
+  if (error) {
+    console.error('Error uploading resume:', error);
+    return error.message;
+  }
+  
+  // Get the public URL for the uploaded file
+  const { data: { publicUrl } } = supabase
+    .storage
+    .from('student-resumes')
+    .getPublicUrl(filePath);
+  
+  return publicUrl;
 }
