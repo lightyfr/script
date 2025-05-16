@@ -10,7 +10,7 @@ export default function StudentDashboard() {
 
   const stats: Array<{ icon: string; label: string; value: string | number; variant: "success" | "info" | "warning" | "danger" }> = [
     { icon: "mailBulk", label: "Emails Sent", value: 120, variant: "success" },
-    { icon: "sparkles", label: "Templates Created", value: 5, variant: "info" },
+    { icon: "sparkles", label: "Offers", value: 11, variant: "info" },
     { icon: "activity", label: "Response Rate", value: "35%", variant: "warning" },
   ];
 
@@ -19,7 +19,7 @@ export default function StudentDashboard() {
       <Column gap="16">
         <Heading variant="display-strong-m">Welcome Back, Student!</Heading>
         <Text variant="body-default-m">Here's an overview of your Script activity.</Text>
-        <Feedback actionButtonProps={{variant: "secondary", label: "Open"}} icon variant="success" title="You Have Unread Responses" description="13 Proffesors just connected back with you!"/>
+        <Feedback actionButtonProps={{variant: "secondary", label: "Open"}} icon variant="success" title="You Have Unread Responses" description="13 Professors just connected back with you!"/>
       </Column>
 
       <LineChart
