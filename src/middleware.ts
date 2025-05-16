@@ -18,7 +18,6 @@ const isIgnoredRoute = createRouteMatcher(['/_next(.*)', '/favicon.ico', '/stati
 
 const isOnboardingRoute = createRouteMatcher([
   '/onboarding/select-role',
-  '/onboarding/student-profile',
   '/onboarding/professor-profile'
 ]);
 

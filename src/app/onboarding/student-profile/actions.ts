@@ -124,3 +124,43 @@ export async function updateStudentProfile(profileData: StudentProfileData): Pro
 
   return { success: true };
 }
+
+export async function uploadResume(file: File): Promise<string> {
+  const user = await currentUser();
+  if (!user?.id) {
+    throw new Error('User not authenticated.');
+  }
+  const clerkUserId = user.id;
+  const supabase = await createSupabaseClientWithClerkToken();
+  
+  // Create a unique filename using the user ID and timestamp
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${clerkUserId}_${Date.now()}.${fileExt}`;
+  const filePath = `resumes/${fileName}`;
+  
+  // Convert file to arrayBuffer for upload
+  const arrayBuffer = await file.arrayBuffer();
+  const fileData = new Uint8Array(arrayBuffer);
+  
+  // Upload file to Supabase Storage
+  const { data, error } = await supabase
+    .storage
+    .from('student-resumes') // Make sure this bucket exists in your Supabase project
+    .upload(filePath, fileData, {
+      contentType: file.type,
+      upsert: true
+    });
+  
+  if (error) {
+    console.error('Error uploading resume:', error);
+    throw new Error(`Failed to upload resume: ${error.message}`);
+  }
+  
+  // Get the public URL for the uploaded file
+  const { data: { publicUrl } } = supabase
+    .storage
+    .from('student-resumes')
+    .getPublicUrl(filePath);
+  
+  return publicUrl;
+}
