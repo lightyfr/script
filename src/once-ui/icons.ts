@@ -39,6 +39,7 @@ import {
 import { RiVisaLine } from "react-icons/ri";
 
 import { FaDiscord, FaGithub, FaGoogle } from "react-icons/fa6";
+import { FaArrowUp, FaArrowDown } from "react-icons/fa6";
 
 import { LuChevronsLeftRight } from "react-icons/lu";
 import { arrow } from "@floating-ui/react-dom";
@@ -82,6 +83,7 @@ export const iconLibrary: Record<string, IconType> = {
   userGraduate: FaUserGraduate,
   chalkboardTeacher: FaChalkboardTeacher,
   arrowDown: MdKeyboardDoubleArrowDown,
+  arrowUp: FaArrowUp,
 };
 
 export type IconLibrary = typeof iconLibrary;
