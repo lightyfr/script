@@ -31,7 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => (
     radius="xl"
     paddingTop="s"
     background="neutral-weak"
-    border="neutral-alpha-weak"
+    border="neutral-alpha-medium"
     style={{ width: "60px" }}>
       
     <UserButton/>
