@@ -14,7 +14,7 @@ interface ChartCardProps {
 
 export const ChartCard: React.FC<ChartCardProps> = ({ icon, label, value, variant }) => (
     <Row fillWidth border={`${variant}-alpha-weak`}
-        background={`${variant}-alpha-weak`}
+        background="surface"
         radius="l"
         vertical="center"
         padding="l"
