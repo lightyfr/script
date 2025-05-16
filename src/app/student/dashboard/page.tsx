@@ -1,16 +1,17 @@
 "use client";
 
 import React from "react";
-import { Column, Row, Card, Heading, Text, Button, Icon, useToast } from "@/once-ui/components";
+import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback } from "@/once-ui/components";
 import { LineChart } from "@/once-ui/modules/data/LineChart";
+import { ChartCard } from "@/app/components/chartCard";
 
 export default function StudentDashboard() {
   const { addToast } = useToast();
 
   const stats = [
-    { icon: "mailBulk", label: "Emails Sent", value: 120 },
-    { icon: "sparkles", label: "Templates Created", value: 5 },
-    { icon: "activity", label: "Response Rate", value: "35%" },
+    { icon: "mailBulk", label: "Emails Sent", value: 120, variant: "success" },
+    { icon: "sparkles", label: "Templates Created", value: 5, variant: "info" },
+    { icon: "activity", label: "Response Rate", value: "35%", variant: "warning" },
   ];
 
   return (
@@ -18,6 +19,7 @@ export default function StudentDashboard() {
       <Column gap="16">
         <Heading variant="display-strong-m">Welcome Back, Student!</Heading>
         <Text variant="body-default-m">Here's an overview of your Script activity.</Text>
+        <Feedback actionButtonProps={{variant: "secondary", label: "Open"}} icon variant="success" title="You Have Unread Responses" description="13 Proffesors just connected back with you!"/>
       </Column>
 
       <LineChart
@@ -41,22 +43,13 @@ export default function StudentDashboard() {
               
       <Row fillWidth gap="24" mobileDirection="column">
         {stats.map((stat) => (
-          <Card
+          <ChartCard
             key={stat.label}
-            fill
-            direction="column"
-            padding="24"
-            radius="l"
-            horizontal="center"
-          >
-            <Icon name={stat.icon} size="xl" onBackground="brand-strong" marginBottom="8" />
-            <Text variant="body-default-l" onBackground="neutral-strong">
-              {stat.value}
-            </Text>
-            <Text variant="body-strong-s" onBackground="neutral-medium">
-              {stat.label}
-            </Text>
-          </Card>
+            variant={stat.variant}
+            icon="chevronRight"
+            label={stat.label}
+            value={stat.value}
+          />
         ))}
       </Row>
 
