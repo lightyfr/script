@@ -11,7 +11,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     return (
         <Column 
         data-viz="divergent">
-        <Tag position='fixed' zIndex={1} variant='neutral' right='4' top='16' size='l'>Upgrade</Tag>
             <Row>
                 <Sidebar
                     items={[
