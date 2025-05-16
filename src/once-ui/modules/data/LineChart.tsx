@@ -191,8 +191,8 @@ const LineChart: React.FC<LineChartProps> = ({
             <defs>
               {autoSeries.map(({ key, color }) => (
                 <linearGradient key={key} id={`color-${key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={`var(--${color})`} stopOpacity={0.8} />
-                  <stop offset="100%" stopColor={`var(--${color})`} stopOpacity={0} />
+                  <stop offset="0%" stopColor={`${color}`} stopOpacity={0.8} />
+                  <stop offset="100%" stopColor={`${color}`} stopOpacity={0} />
                 </linearGradient>
               ))}
             </defs>

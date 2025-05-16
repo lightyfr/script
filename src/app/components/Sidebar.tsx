@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import { Column, Dialog, Flex, Icon, IconButton, Line, Row, Text } from "@/once-ui/components";
+import { Column, Dialog, Flex, Icon, IconButton, Line, Logo, Row, Text } from "@/once-ui/components";
 import type { IconName } from "@/once-ui/icons";
-import { PricingTable, UserButton } from "@clerk/nextjs";
+import { PricingTable, useAuth, UserButton } from "@clerk/nextjs";
 
 interface SidebarItem {
   icon: IconName;
@@ -17,7 +17,9 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
+  const { has } = useAuth(); // Changed from await auth()
+  const hasSuper = has && has({ plan: 'script_super' });
+  
   const handleUpgradeClick = () => {
     setIsDialogOpen(true);
   };
@@ -64,6 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
             ))}
           </Column>
         </Column>
+        {!hasSuper && (
         <IconButton
           icon="energy"
           tooltip="Upgrade"
@@ -71,6 +74,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
           size="l"
           onClick={handleUpgradeClick}
         />
+        )}
+        {hasSuper && (
+          <Column gap="4" horizontal="center">
+          <Logo wordmark={false} size="xs"/>
+          <Text variant="label-default-s" onBackground="neutral-weak">
+            PRO
+          </Text>
+          </Column>
+        )}
       </Column>
       <Dialog isOpen={isDialogOpen} onClose={handleCloseDialog} title="Upgrade to Script Super">
         <Line/>
