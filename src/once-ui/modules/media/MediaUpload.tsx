@@ -23,6 +23,7 @@ interface MediaUploadProps extends React.ComponentProps<typeof Flex> {
   resizeHeight?: number;
   loading?: boolean;
   accept?: string;
+  pdfMode?: boolean;
 }
 
 const MediaUpload = forwardRef<HTMLInputElement, MediaUploadProps>(
@@ -42,7 +43,8 @@ const MediaUpload = forwardRef<HTMLInputElement, MediaUploadProps>(
       sizes,
       children,
       initialPreviewImage = null,
-      accept = "image/*",
+      pdfMode = false,
+      accept = pdfMode ? ".pdf,application/pdf" : "image/*",
       ...rest
     },
     ref,
@@ -50,6 +52,7 @@ const MediaUpload = forwardRef<HTMLInputElement, MediaUploadProps>(
     const [dragActive, setDragActive] = useState(false);
     const [previewImage, setPreviewImage] = useState<string | null>(initialPreviewImage); // Use prop as initial state
     const [uploading, setUploading] = useState(false);
+    const [isPdf, setIsPdf] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -57,6 +60,26 @@ const MediaUpload = forwardRef<HTMLInputElement, MediaUploadProps>(
         setPreviewImage(initialPreviewImage);
       }
     }, [initialPreviewImage]);
+
+    const validateFile = (file: File) => {
+      if (pdfMode && file.type !== 'application/pdf') {
+        throw new Error('Only PDF files are allowed in PDF mode');
+      }
+      if (!pdfMode && !file.type.startsWith('image/')) {
+        throw new Error('Only image files are allowed');
+      }
+      return true;
+    };
+
+    const handleFileChange = async (file: File) => {
+      try {
+        validateFile(file);
+        // Rest of existing handleFileChange logic
+      } catch (error) {
+        console.error(error);
+        // Optional: Add error handling UI feedback
+      }
+    };
 
     const handleDragOver = (e: React.DragEvent) => {
       e.preventDefault();
@@ -70,13 +93,20 @@ const MediaUpload = forwardRef<HTMLInputElement, MediaUploadProps>(
       setDragActive(false);
     };
 
-    const handleDrop = (e: React.DragEvent) => {
+    const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
       setDragActive(false);
 
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        handleFiles(e.dataTransfer.files);
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length === 0) return;
+
+      try {
+        validateFile(files[0]);
+        await handleFileChange(files[0]);
+      } catch (error) {
+        console.error(error);
+        // Optional: Add error handling UI feedback
       }
     };
 
@@ -90,16 +120,24 @@ const MediaUpload = forwardRef<HTMLInputElement, MediaUploadProps>(
       const file = files[0];
       if (!file) return;
 
-      if (file.type.startsWith("image/")) {
-        setPreviewImage(URL.createObjectURL(file));
-
-        if (compress && file.type.startsWith("image/")) {
-          compressImage(file);
-        } else {
-          uploadFile(file);
-        }
+      if (pdfMode && file.type === 'application/pdf') {
+        setIsPdf(true);
+        const pdfUrl = URL.createObjectURL(file);
+        setPreviewImage(pdfUrl);
+        onFileUpload?.(file);
       } else {
-        console.warn("Unsupported file type:", file.type);
+        setIsPdf(false);
+        if (file.type.startsWith("image/")) {
+          setPreviewImage(URL.createObjectURL(file));
+
+          if (compress && file.type.startsWith("image/")) {
+            compressImage(file);
+          } else {
+            uploadFile(file);
+          }
+        } else {
+          console.warn("Unsupported file type:", file.type);
+        }
       }
     };
 
@@ -130,36 +168,53 @@ const MediaUpload = forwardRef<HTMLInputElement, MediaUploadProps>(
     };
 
     return (
-      <Flex
-        transition="micro-medium"
-        overflow="hidden"
-        cursor="interactive"
-        className={styles.container}
-        aspectRatio={aspectRatio}
-        fillWidth
-        horizontal="center"
-        vertical="center"
-        border="neutral-medium"
-        radius="l"
-        onClick={handleFileSelection}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        {...rest}
-      >
+      // InMediaUpload.tsx, add className for PDF mode
+<Flex
+  transition="micro-medium"
+  overflow="hidden"
+  cursor="interactive"
+  className={`${styles.container} ${isPdf ? styles.pdfMode : ''}`}
+  aspectRatio={aspectRatio}
+  fillWidth
+  horizontal="center"
+  vertical="center"
+  border="neutral-medium"
+  radius="l"
+  onClick={handleFileSelection}
+  onDragOver={handleDragOver}
+  onDragLeave={handleDragLeave}
+  onDrop={handleDrop}
+  {...rest}
+>
         {!loading && (
           <>
             {previewImage ? (
-              <SmartImage
-                style={{
-                  cursor: "pointer",
-                  filter: uploading ? "grayscale(1)" : "",
-                }}
-                sizes={sizes}
-                fill
-                src={previewImage ? previewImage : ""}
-                alt="Preview of uploaded image"
-              />
+              <Flex style={{ aspectRatio, overflow: 'hidden' }} fill>
+                {isPdf ? (
+                  <embed
+                  src={`${previewImage}#toolbar=0&navpanes=0&scrollbar=1`}
+                  type="application/pdf"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    transition: 'transform 0.2s ease',
+                  }}
+                />
+                ) : (
+                  <SmartImage
+                    style={{
+                      cursor: "pointer",
+                      filter: uploading ? "grayscale(1)" : "",
+                    }}
+                    sizes={sizes}
+                    fill
+                    src={previewImage ? previewImage : ""}
+                    alt="Preview of uploaded image"
+                  />
+                )}
+              </Flex>
             ) : (
               <Flex fill center>
                 <Icon name="plus" size="l" />

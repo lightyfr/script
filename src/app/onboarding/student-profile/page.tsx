@@ -15,7 +15,7 @@ import {
   useToast,
   Spinner // For loading state
 } from '@/once-ui/components';
-import { updateStudentProfile, getStudentProfile } from './actions'; // Server actions to be created
+import { updateStudentProfile, getStudentProfile, uploadResume } from './actions'; // Server actions to be created
 import type { Database } from '@/database.types';
 import { MediaUpload } from '@/once-ui/modules';
 
@@ -92,6 +92,22 @@ export default function StudentProfilePage() {
     });
   };
   
+  const handleResumeUpload = async (file: File) => {
+    try {
+      setIsLoading(true);
+      const url = await uploadResume(file);
+      setResumeUrl(url);
+    } catch (error) {
+      console.error('Error uploading resume:', error);
+      addToast({
+        variant: 'danger',
+        message: 'Failed to upload resume. Please try again.'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Column fillWidth fillHeight vertical="center" horizontal="center" padding="l">
@@ -137,7 +153,7 @@ export default function StudentProfilePage() {
               onChange={setInterestsInput}
             />
             <Heading>Resume</Heading>
-            <MediaUpload/>
+            <MediaUpload pdfMode/>
             <Button 
               type="submit" 
               label={isPending ? 'Saving...' : 'Save Profile & Continue'} 
@@ -151,4 +167,4 @@ export default function StudentProfilePage() {
       </Column>
     </Column>
   );
-} 
+}
