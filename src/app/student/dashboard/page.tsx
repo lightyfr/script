@@ -46,7 +46,6 @@ export default function StudentDashboard() { // Removed async
         )}
       <Column gap="16">
         <Heading variant="display-strong-m">Welcome Back, Student!</Heading>
-        <Text variant="body-default-m">Here's an overview of your Script activity.</Text>
         <Feedback actionButtonProps={{variant: "secondary", label: "Open"}} icon variant="success" title="You Have Unread Responses" description="13 Professors just connected back with you!"/>
       </Column>
 

@@ -20,9 +20,9 @@
         color: var(--danger-on-background-medium);
   
         &:hover, &:focus {
-            background: var(--danger-solid-strong);
+            background: var(--danger-alpha-weak);
             color: var(--danger-on-solid-strong);
-            border-color: var(--danger-border-strong);
+            border-color: var(--danger-border-medium);
         }
     }
   }

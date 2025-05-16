@@ -1,8 +1,23 @@
 "use client";
-import React, { useState } from "react";
-import { Column, Dialog, Flex, Icon, IconButton, Line, Logo, Row, Text } from "@/once-ui/components";
+import React, { useState, useRef } from "react"; // Removed useEffect
+import {
+  Column,
+  Dialog,
+  // Dropdown, // No longer directly used here
+  Flex,
+  Icon,
+  IconButton,
+  Line,
+  Logo,
+  Row,
+  Option,
+  Text,
+  DropdownWrapper,
+  Tag, // Added DropdownWrapper
+} from "@/once-ui/components";
 import type { IconName } from "@/once-ui/icons";
-import { PricingTable, useAuth, UserButton } from "@clerk/nextjs";
+import { PricingTable, useAuth, useClerk, useUser } from "@clerk/nextjs";
+import router, { Router } from "next/router";
 
 interface SidebarItem {
   icon: IconName;
@@ -17,16 +32,112 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { has } = useAuth(); // Changed from await auth()
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); // Kept for DropdownWrapper control
+  // const dropdownRef = useRef<HTMLDivElement>(null); // No longer needed, DropdownWrapper handles its own ref
+
+  const { has } = useAuth();
+  const { openUserProfile, signOut } = useClerk();
+  const { user } = useUser();
   const hasSuper = has && has({ plan: 'script_super' });
   
   const handleUpgradeClick = () => {
     setIsDialogOpen(true);
   };
 
+  const handleProfileClick = () => {
+    if (openUserProfile) {
+      openUserProfile();
+    }
+    setIsProfileDropdownOpen(false); // Close dropdown after action
+  };
+
+  const handleSignOut = async () => {
+    if (signOut) {
+      await signOut();
+      router.push('/'); // Redirect to home page after sign-out
+    }
+    setIsProfileDropdownOpen(false); // Close dropdown after action
+  };
+
+  const handleSelect = () => {
+    console.log("Option selected");
+    setIsProfileDropdownOpen(false);
+  };
+
+
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
   };
+
+  // useEffect for handleClickOutside is removed as DropdownWrapper should handle it
+
+  let imageSrc: string | null = null;
+  if (user && user.imageUrl) {
+    const params = new URLSearchParams();
+    params.set('height', '40');
+    params.set('width', '40');
+    params.set('quality', '90');
+    params.set('fit', 'crop');
+    imageSrc = `${user.imageUrl}?${params.toString()}`;
+  }
+
+  const profileDropdownTrigger = (
+    <Column
+      width={2}
+      height={2}
+      radius="full"
+      borderWidth={2}
+      border="neutral-medium"
+      // onClick is handled by DropdownWrapper
+      style={{ overflow: 'hidden', cursor: 'pointer' }}
+    >
+      {imageSrc && (
+        <img
+          src={imageSrc}
+          alt="User profile"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      )}
+    </Column>
+  );
+
+  const profileDropdownContent = (
+    <Flex direction="column" gap="2" vertical="center" background="surface" radius="m" minWidth={17}>
+      <Row padding="8" paddingX="s" horizontal="space-between" gap="16" vertical="center"> 
+        <Row gap="16" vertical="center">
+        <img
+          src={imageSrc || ''}
+          alt="User profile"
+          width={30}
+          height={30}
+          style={{ objectFit: 'cover', borderRadius: '50%' }}
+        />
+        <Text variant="heading-default-s" onBackground="neutral-strong">
+          {user?.firstName || 'User'}
+        </Text>
+        </Row>
+        <Tag variant="brand" label="Pro"/>
+      </Row>
+      <Line />
+      <Row padding="4">
+      <Option
+      hasPrefix={<Icon name="user" size="s" />}
+      label="Manage Profile"
+      value="manageProfile"
+      onClick={handleProfileClick}
+    />
+    </Row>
+    <Row padding="4">
+    <Option
+      hasPrefix={<Icon name="signOut" size="s" />}
+      danger
+      label="Sign Out"
+      value="signOut"
+      onClick={handleSignOut}
+    />    
+    </Row>
+    </Flex>
+  );
 
   return (
     <Flex
@@ -51,8 +162,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
         style={{ width: "60px" }}
       >
         <Column horizontal="center">
-          <UserButton />
-          <Column paddingTop="l" gap="s">
+          <DropdownWrapper
+            isOpen={isProfileDropdownOpen}
+            onOpenChange={setIsProfileDropdownOpen}
+            trigger={profileDropdownTrigger}
+            dropdown={profileDropdownContent}
+            floatingPlacement="bottom-end" // Adjust as needed
+          >
+            {/* DropdownWrapper handles rendering its trigger and dropdown */}
+          </DropdownWrapper>
+          <Column paddingTop="s" gap="2">
             {items.map((item, idx) => (
               <IconButton
                 key={idx}
