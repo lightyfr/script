@@ -122,7 +122,7 @@ export default function Home() {
       <Header/>
       <Column
         as="main"
-        maxWidth="l" // Max width for the main content container
+        paddingX="l"
         position="relative"
         radius="xl"
         horizontal="center"
@@ -141,7 +141,7 @@ export default function Home() {
             position="absolute"
             zIndex={-1}
             grid={{
-              display: true,
+              display: false,
               width: "0.25rem",
               color: "neutral-alpha-weak",
               height: "0.25rem",
@@ -313,9 +313,9 @@ export default function Home() {
               </Text>
               <Button variant="secondary" label="Learn about Personalization" arrowIcon href="#"/>
             </Column>
-            <Column fillWidth horizontal="center" vertical="center">
+            <Column fillWidth radius="xl" border="neutral-alpha-medium" horizontal="center" vertical="center">
               {/* Placeholder for an image or an abstract visual */}
-              <TiltFx aspectRatio="4/3" radius="xl" border="accent-alpha-weak" overflow="hidden">
+              <TiltFx aspectRatio="4/3" fill radius="xl" border="accent-alpha-weak" overflow="hidden">
                  <Column fill horizontal="center" vertical="center" background="surface" padding="32">
                     <Icon name="mailBulk" size="xl" onBackground="accent-strong"/>
                     <Text marginTop="16" onBackground="neutral-medium">Visual of email personalization</Text>
@@ -325,10 +325,10 @@ export default function Home() {
           </Row>
           {/* Feature 2 */}
           <Row fillWidth vertical="center" gap="48" mobileDirection="column">
-             <Column fillWidth horizontal="center" vertical="center">
+             <Column background="surface" minHeight="s" radius="xl" border="neutral-alpha-medium" width="s" horizontal="center" vertical="center">
                {/* Placeholder for an image or an abstract visual */}
-              <TiltFx aspectRatio="4/3" radius="xl" border="accent-alpha-weak" overflow="hidden">
-                 <Column fill horizontal="center" vertical="center" background="surface" padding="32">
+              <TiltFx aspectRatio="4/3" fillHeight radius="xl">
+                 <Column fill horizontal="center" vertical="center" padding="32">
                     <Icon name="checklist" size="xl" onBackground="accent-strong"/>
                     <Text marginTop="16" onBackground="neutral-medium">Visual of tracking dashboard</Text>
                  </Column>
@@ -361,8 +361,8 @@ export default function Home() {
           </Heading>
           <Row fillWidth gap="24" mobileDirection="column" horizontal="stretch" paddingTop="32">
             <Row fillWidth overflow="hidden">
-          <Row maxWidth="32" borderTop="neutral-alpha-weak" borderBottom="neutral-medium" />
-          <Row fillWidth border="neutral-alpha-weak" mobileDirection="column">
+          <Row maxWidth="32" borderTop="neutral-alpha-medium" borderBottom="neutral-alpha-medium" />
+          <Row fillWidth border="neutral-alpha-medium" mobileDirection="column">
             {links.map((link, index) => (
               <Card
                 key={link.href}
@@ -372,7 +372,7 @@ export default function Home() {
                 gap="8"
                 background="page"
                 direction="column"
-                borderRight={index < links.length - 1 ? "neutral-alpha-weak" : undefined}
+                borderRight={index < links.length - 1 ? "neutral-alpha-medium" : undefined}
                 border={undefined}
               >
                 <Row fillWidth center gap="12">
@@ -387,7 +387,7 @@ export default function Home() {
               </Card>
             ))}
           </Row>
-          <Row maxWidth="32" borderTop="neutral-alpha-weak" borderBottom="neutral-medium" />
+          <Row maxWidth="32" borderTop="neutral-alpha-medium" borderBottom="neutral-alpha-medium" />
         </Row>
           </Row>
         </Column>

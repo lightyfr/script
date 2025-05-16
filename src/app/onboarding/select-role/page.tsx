@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heading, Column, Row, Card, Text, Icon, useToast } from '@/once-ui/components';
-import { updateUserRole } from './actions'; // We'll create this server action next
+import { updateUserRole } from './actions';
 import { motion } from 'framer-motion';
 
 // letter-by-letter text animation variants
