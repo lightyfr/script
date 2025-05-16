@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import moment from 'moment'
 import {
@@ -35,7 +37,7 @@ interface LineChartProps extends React.ComponentProps<typeof Flex> {
   timeFormat?: string;
 }
 
-const defaultColors = ['blue', 'green', 'aqua', 'violet', 'orange', 'red', 'purple', 'magenta', 'moss', 'emerald'];
+const defaultColors = ['accent-background-strong', 'accent-background-strong', 'accent-background-strong', 'accent-background-strong', 'scheme-blue-100', 'scheme-blue-100', 'scheme-blue-100', 'scheme-blue-100', 'scheme-blue-100', 'scheme-blue-100'];
 
 const CustomTooltip = ({ active, payload, label, isTimeSeries, timeFormat = "MMM dd, yyyy" }: any) => {
   if (active && payload && payload.length) {
@@ -110,8 +112,8 @@ const CustomLegend = ({ payload, labels, colors = defaultColors }: any) => {
             <Flex
               style={{
                 backgroundClip: "padding-box",
-                border: `1px solid var(--data-${colors[index]})`,
-                background: `linear-gradient(to bottom, var(--data-${colors[index]}) 0%, transparent 100%)`
+                border: `1px solid var(--${colors[index]})`,
+                background: `linear-gradient(to bottom, var(--${colors[index]}) 0%, transparent 100%)`
               }}
               minWidth="16"
               minHeight="16"
@@ -189,8 +191,8 @@ const LineChart: React.FC<LineChartProps> = ({
             <defs>
               {autoSeries.map(({ key, color }) => (
                 <linearGradient key={key} id={`color-${key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={`var(--data-${color})`} stopOpacity={0.8} />
-                  <stop offset="100%" stopColor={`var(--data-${color})`} stopOpacity={0} />
+                  <stop offset="0%" stopColor={`var(--${color})`} stopOpacity={0.8} />
+                  <stop offset="100%" stopColor={`var(--${color})`} stopOpacity={0} />
                 </linearGradient>
               ))}
             </defs>
