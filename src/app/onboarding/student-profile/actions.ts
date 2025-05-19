@@ -2,10 +2,10 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import type { Database } from '@/database.types';
 import type { StudentProfileData } from './page'; // Import the type from the page component
+import { createServerSupabaseClient } from '@/server';
 
 // Helper function to create Supabase client with Clerk token
 async function createSupabaseClientWithClerkToken() {
@@ -17,26 +17,7 @@ async function createSupabaseClientWithClerkToken() {
   }
 
   const cookieStore = await cookies();
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name: string) => cookieStore.get(name)?.value,
-        set: (name: string, value: string, options: CookieOptions) => {
-          try { (cookieStore as any).set({ name, value, ...options }); } catch (e) { /* ignore */ }
-        },
-        remove: (name: string, options: CookieOptions) => {
-          try { (cookieStore as any).set({ name, value: '', ...options }); } catch (e) { /* ignore */ }
-        },
-      },
-      global: {
-        headers: {
-          Authorization: `Bearer ${clerkToken}`,
-        },
-      },
-    }
-  );
+  return createServerSupabaseClient();
 }
 
 export async function getStudentProfile(): Promise<Partial<StudentProfileData> | null> {
@@ -123,7 +104,6 @@ export async function updateStudentProfile(profileData: StudentProfileData): Pro
     console.error('Error updating student profile:', studentProfileUpdateError);
     throw new Error(`Failed to update student profile: ${studentProfileUpdateError.message}`);
   }
-
   return { success: true };
 }
 
@@ -149,8 +129,6 @@ export async function uploadResume(file: File): Promise<string> {
     .storage
     .from('student-resumes') // Make sure this bucket exists in your Supabase project
     .upload(filePath, fileData, {
-      contentType: file.type,
-      upsert: true
     });
   
   if (error) {
