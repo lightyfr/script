@@ -15,6 +15,7 @@ const nextConfig = {
         'https://vigilant-space-broccoli-9p99q7wxq5qf4w-3000.app.github.dev',
         'vigilant-space-broccoli-9p99q7wxq5qf4w-3000.app.github.dev',
       ],
+      bodySizeLimit: '30mb', // or higher, e.g. '20mb'
     },
   },
 };

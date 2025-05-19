@@ -1,9 +1,28 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { currentUser, auth } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
+import { createServerSupabaseClient } from '@/server';
 import type { Database } from '@/database.types';
+
+/**
+ * Fetches the current student's name from Supabase.
+ * Returns an empty string if no name is set.
+ */
+export async function getStudentName() {
+  const supabase = await createSupabaseClientWithClerkToken();
+  const { data, error } = await supabase
+    .from('student_profiles')
+    .select('name')
+    .single();
+
+  if (error) {
+    console.error('Error fetching student name:', error);
+    return '';
+  }
+
+  return data?.name || '';
+}
 
 // Helper to instantiate Supabase client with Clerk auth token
 async function createSupabaseClientWithClerkToken() {
@@ -13,30 +32,13 @@ async function createSupabaseClientWithClerkToken() {
     throw new Error('Clerk token not available. Ensure user is authenticated.');
   }
 
-  const cookieStore = await cookies();
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name: string) => cookieStore.get(name)?.value,
-        set: (name: string, value: string, options: CookieOptions) => {
-          try { (cookieStore as any).set({ name, value, ...options }); } catch {};
-        },
-        remove: (name: string, options: CookieOptions) => {
-          try { (cookieStore as any).set({ name, value: '', ...options }); } catch {};
-        }
-      },
-      global: {
-        headers: {
-          Authorization: `Bearer ${clerkToken}`
-        }
-      }
-    }
-  );
+  const supabase = await createServerSupabaseClient();
+  // Attach Clerk token to global headers if needed
+  (supabase as any).global = {
+    ...(supabase as any).global,
+    headers: {
+      Authorization: `Bearer ${clerkToken}`,
+    },
+  };
+  return supabase;
 }
-
-/**
- * Fetches the current student's name from Supabase.
- * Returns an empty string if no name is set.
- */
