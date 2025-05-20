@@ -76,11 +76,18 @@ export default function NewCampaignPage() {
               onChange={(interests) => setFormData({ ...formData, researchInterests: interests })}
               placeholder="Add research interests..."
             />
-            <Button
-              label="Next"
-              onClick={() => setStep(2)}
-              disabled={formData.researchInterests.length === 0}
-            />
+            <Row gap="16">
+              <Button
+                variant="secondary"
+                label="Back to Dashboard"
+                onClick={() => router.push('/student/dashboard')}
+              />
+              <Button
+                label="Next"
+                onClick={() => setStep(2)}
+                disabled={formData.researchInterests.length === 0}
+              />
+            </Row>
           </Column>
         );
       case 2:

@@ -6,22 +6,22 @@ import { createServerSupabaseClient } from '@/server';
 import type { Database } from '@/database.types';
 
 /**
- * Fetches the current student's name from Supabase.
- * Returns an empty string if no name is set.
+ * Fetches the current user's first name from Supabase.
+ * Returns 'Student' if no name is set.
  */
 export async function getStudentName() {
   const supabase = await createSupabaseClientWithClerkToken();
   const { data, error } = await supabase
-    .from('student_profiles')
-    .select('name')
+    .from('users')
+    .select('firstName')
     .single();
 
   if (error) {
-    console.error('Error fetching student name:', error);
-    return '';
+    console.error('Error fetching user name:', error);
+    return 'Student';
   }
 
-  return data?.name || '';
+  return data?.firstName || 'Student';
 }
 
 // Helper to instantiate Supabase client with Clerk auth token
