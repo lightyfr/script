@@ -1,23 +1,38 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback, Tag, Dialog, Line } from "@/once-ui/components";
 import { LineChart } from "@/once-ui/modules/data/LineChart";
 import { ChartCard } from "@/app/components/chartCard";
-import { PricingTable, useAuth } from "@clerk/nextjs"; // Changed from @clerk/nextjs/server
+import { PricingTable, useAuth } from "@clerk/nextjs";
+import { getStudentName } from "./actions";
 
-export default function StudentDashboard() { // Removed async
+export default function StudentDashboard() {
   const { addToast } = useToast();
-  const { has } = useAuth(); // Changed from await auth()
-  const hasSuper = has && has({ plan: 'script_super' }); // Added a check for has being defined
+  const { has } = useAuth();
+  const hasSuper = has && has({ plan: 'script_super' });
+  const [userName, setUserName] = useState('Student');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
-    const handleUpgradeClick = () => {
-      setIsDialogOpen(true);
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const name = await getStudentName();
+        setUserName(name);
+      } catch (error) {
+        console.error('Error fetching user name:', error);
+        setUserName('Student');
+      }
     };
 
-      const handleCloseDialog = () => {
+    fetchUserName();
+  }, []);
+
+  const handleUpgradeClick = () => {
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
     setIsDialogOpen(false);
   };
   const stats: Array<{ icon: string; label: string; value: string | number; variant: "success" | "info" | "warning" | "danger" }> = [
@@ -45,7 +60,7 @@ export default function StudentDashboard() { // Removed async
           </Tag>
         )}
       <Column gap="16">
-        <Heading variant="display-strong-m">Welcome Back, Student!</Heading>
+        <Heading variant="display-strong-m">Welcome Back, {userName}!</Heading>
         <Feedback actionButtonProps={{variant: "secondary", label: "Open"}} icon variant="success" title="You Have Unread Responses" description="13 Professors just connected back with you!"/>
       </Column>
 
@@ -85,7 +100,7 @@ export default function StudentDashboard() { // Removed async
       
         <Heading variant="heading-strong-l">Quick Actions</Heading>
         <Row gap="16">
-          <Button
+          <Button href="campaigns/new"
             label="Create New Campaign"
             onClick={() => addToast({ variant: "success", message: "Campaign Created!" })}
           />

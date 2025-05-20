@@ -21,20 +21,35 @@ const isOnboardingRoute = createRouteMatcher([
   '/onboarding/professor-profile'
 ]);
 
+// Define protected routes that require authentication
+const isProtectedRoute = (pathname: string) => {
+  return [
+    '/student/dashboard',
+    '/articles',
+    '/projects',
+    '/careers'
+  ].some(route => pathname.startsWith(route));
+};
+
 export default clerkMiddleware(async (auth: ClerkMiddlewareAuth, request: NextRequest) => {
   if (isIgnoredRoute(request)) {
     return NextResponse.next();
   }
 
+  const { pathname } = request.nextUrl;
   const authResult = await auth(); 
   const { userId, getToken } = authResult;
 
   // Handle public routes first
   if (isPublicRoute(request) && !isOnboardingRoute(request)) {
-    // If user is on a public route that is NOT an onboarding route,
-    // and they are authenticated but not fully onboarded, they might get redirected later by other checks.
-    // But for now, general public access is allowed.
     return NextResponse.next();
+  }
+
+  // Redirect unauthenticated users on protected routes
+  if (isProtectedRoute(pathname) && !userId) {
+    const signInUrl = new URL('/sign-in', request.url);
+    signInUrl.searchParams.set('redirect_url', pathname);
+    return NextResponse.redirect(signInUrl);
   }
 
   // If user is not authenticated
