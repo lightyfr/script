@@ -32,7 +32,6 @@ async function createSupabaseClientWithClerkToken() {
 type CampaignData = {
   researchInterests: string[];
   targetUniversities: string[];
-  emailTemplate: string;
   maxEmails: number;
 };
 
@@ -52,7 +51,6 @@ export async function createCampaign(campaignData: CampaignData) {
         user_id: clerkUserId,
         research_interests: campaignData.researchInterests,
         target_universities: campaignData.targetUniversities,
-        email_template: campaignData.emailTemplate,
         max_emails: campaignData.maxEmails,
         status: 'pending',
         created_at: new Date().toISOString(),
@@ -90,4 +88,25 @@ const { error: jobError } = await supabase.functions.invoke('enqueue-campaign-em
     console.error('Error creating campaign:', error);
     throw error;
   }
+}
+
+// Fetch the current user's research interests from student_profiles
+export async function getUserInterests(): Promise<string[]> {
+  const user = await currentUser();
+  if (!user?.id) {
+    throw new Error('User not authenticated.');
+  }
+  const supabase = await createSupabaseClientWithClerkToken();
+  const { data, error } = await supabase
+    .from('student_profiles')
+    .select('interests')
+    .eq('user_id', user.id)
+    .single();
+  if (error) {
+    // If no profile, return empty array (user can still proceed)
+    if (error.code === 'PGRST116') return [];
+    throw new Error('Failed to fetch user interests: ' + error.message);
+  }
+  // data?.interests may be undefined/null, so default to []
+  return (data && Array.isArray(data.interests)) ? data.interests : [];
 }
