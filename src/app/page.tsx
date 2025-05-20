@@ -122,7 +122,7 @@ export default function Home() {
       <Header/>
       <Column
         as="main"
-        paddingX="l"
+        paddingX="xl"
         position="relative"
         radius="xl"
         horizontal="center"
@@ -254,22 +254,26 @@ export default function Home() {
           </Text>
           <Row fillWidth gap="24" mobileDirection="column" horizontal="center">
             <Card fill direction="column" paddingY="48" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
-              <Icon name="search" size="xl" onBackground="accent-strong" marginBottom="16"/>
+              <Row padding="8" background="neutral-medium" border="neutral-alpha-weak" radius="xl" marginBottom="s">
+              <Icon name="search" size="xl" onBackground="accent-strong"/>
+              </Row>
               <Column gap="4">
               <Heading as="h3" variant="heading-strong-m" align="center">Endless Searching</Heading>
               <Text align="center" onBackground="neutral-medium">Spending hours finding professor contacts and research interests.</Text>
               </Column>
             </Card>
             <Card fill direction="column" paddingY="48" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
-              <Icon name="socialDistance" size="xl" onBackground="accent-strong" marginBottom="16"/>
-              <Column gap="4">
+              <Row padding="8" background="neutral-medium" border="neutral-alpha-weak" radius="xl" marginBottom="s">
+              <Icon name="socialDistance" size="xl" onBackground="accent-strong"/>
+              </Row>              <Column gap="4">
               <Heading as="h3" variant="heading-strong-m" align="center">Impersonal Outreach</Heading>
               <Text align="center" onBackground="neutral-medium">Struggling to write compelling, personalized emails that get noticed.</Text>
               </Column>
             </Card>
             <Card fill direction="column" paddingY="48" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
-              <Icon name="chartLow" size="xl" onBackground="accent-strong" marginBottom="16"/>
-             <Column gap="4">
+              <Row padding="8" background="neutral-medium" border="neutral-alpha-weak" radius="xl" marginBottom="s">
+              <Icon name="chartLow" size="xl" onBackground="accent-strong"/>
+              </Row>             <Column gap="4">
               <Heading as="h3" variant="heading-strong-m" align="center">Low Response Rates</Heading>
               <Text align="center" onBackground="neutral-medium">Sending emails into the void with little to no feedback.</Text>
               </Column>
