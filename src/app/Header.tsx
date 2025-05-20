@@ -10,7 +10,8 @@ import {
   ThemeSwitcher,
   SmartImage,
   MegaMenu,
-  type MenuGroup
+  type MenuGroup,
+  SmartLink
 } from "@/once-ui/components";
 import { CodeBlock, MediaUpload } from "@/once-ui/modules";
 import { ScrollToTop } from "@/once-ui/components/ScrollToTop";
@@ -55,7 +56,8 @@ export const Header: React.FC = () => {
         paddingY="8"
       >
         <Row gap="m" vertical="center">
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '12px' }}>
+          <Row>
+          <SmartLink unstyled href="/">
             <img 
               src="/images/script-logo-main.png" 
               alt="SCRIPT AI Logo" 
@@ -63,17 +65,18 @@ export const Header: React.FC = () => {
               style={{ height: '32px', width: 'auto' }}
             />
             <span style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: 600, 
-              color: 'var(--color-neutral-strong)',
+              fontSize: '1rem', 
+              fontWeight: 530, 
+              color: 'var(--neutral-on-background-strong)',
               fontFamily: 'var(--font-sans)'
             }}>
-              SCRIPT AI
+              Script
             </span>
-          </Link>
-          <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--color-neutral-subtle)' }} />
+          </SmartLink>
+          </Row>
+          
           <SignedIn>
-            <Row data-border="playful" paddingX="m">
+            <Row data-border="playful" paddingX="xs" paddingLeft="0">
               <MegaMenu data-rounded="conservative" menuGroups={menuGroups} />
             </Row>
           </SignedIn>
@@ -125,9 +128,6 @@ export const Header: React.FC = () => {
               />
             </SignUpButton>
           </SignedOut>
-          <SignedIn>
-            <UserButton/>
-          </SignedIn>
         </Row>
       </Row>
       <Row hide="m" maxHeight={3} position="fixed" right="104" vertical="center">
