@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Column,
@@ -16,12 +16,11 @@ import {
   Spinner,
   Line,
 } from "@/once-ui/components";
-import { createCampaign } from './actions';
+import { createCampaign, getUserInterests } from './actions';
 
 type CampaignFormData = {
   researchInterests: string[];
   targetUniversities: string[];
-  emailTemplate: string;
   maxEmails: number;
 };
 
@@ -33,9 +32,32 @@ export default function NewCampaignPage() {
   const [formData, setFormData] = useState<CampaignFormData>({
     researchInterests: [],
     targetUniversities: [],
-    emailTemplate: "",
     maxEmails: 50,
   });
+  const [interestsLoading, setInterestsLoading] = useState(true);
+
+  // Load user's interests on mount
+  useEffect(() => {
+    let mounted = true;
+    setInterestsLoading(true);
+    getUserInterests()
+      .then((interests) => {
+        if (mounted) {
+          setFormData((prev) => ({ ...prev, researchInterests: interests }));
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load user interests:', error);
+        addToast({
+          variant: 'danger',
+          message: 'Could not load your research interests. You can still add them manually.',
+        });
+      })
+      .finally(() => {
+        if (mounted) setInterestsLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [addToast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,17 +91,24 @@ export default function NewCampaignPage() {
             <Text onBackground="neutral-weak">
               What areas of research are you interested in? This will help us find relevant professors.
             </Text>
-            <TagInput
-              id="research-interests"
-              label="Research Interests"
-              value={formData.researchInterests}
-              onChange={(interests) => setFormData({ ...formData, researchInterests: interests })}
-              placeholder="Add research interests..."
-            />
+            {interestsLoading ? (
+              <Row gap="8" vertical="center">
+                <Spinner size="m" />
+                <Text>Loading your interests...</Text>
+              </Row>
+            ) : (
+              <TagInput
+                id="research-interests"
+                label="Research Interests"
+                value={formData.researchInterests}
+                onChange={(interests) => setFormData({ ...formData, researchInterests: interests })}
+                placeholder="Add research interests..."
+              />
+            )}
             <Button
               label="Next"
               onClick={() => setStep(2)}
-              disabled={formData.researchInterests.length === 0}
+              disabled={formData.researchInterests.length === 0 || interestsLoading}
             />
           </Column>
         );
@@ -113,18 +142,7 @@ export default function NewCampaignPage() {
       case 3:
         return (
           <Column gap="24">
-            <Heading variant="heading-strong-l">Email Template</Heading>
-            <Text onBackground="neutral-weak">
-              Write a template for your outreach emails. Use placeholders like [PROFESSOR_NAME] and [RESEARCH_AREA] that will be automatically filled.
-            </Text>
-            <Textarea
-              id="email-template"
-              label="Email Template"
-              value={formData.emailTemplate}
-              onChange={(e) => setFormData({ ...formData, emailTemplate: e.target.value })}
-              placeholder="Dear [PROFESSOR_NAME],\n\nI am writing to express my interest in your research on [RESEARCH_AREA]..."
-              rows={10}
-            />
+            <Heading variant="heading-strong-l">Campaign Settings</Heading>
             <Input
               id="max-emails"
               type="number"
@@ -143,7 +161,6 @@ export default function NewCampaignPage() {
               <Button
                 label="Create Campaign"
                 onClick={handleSubmit}
-                disabled={!formData.emailTemplate}
               />
             </Row>
           </Column>
@@ -162,7 +179,7 @@ export default function NewCampaignPage() {
 
       <Line />
 
-      <Card fillWidth padding="32" radius="l">
+      <Column fillWidth padding="32" radius="l" background="surface" border="neutral-alpha-weak">
         {isLoading ? (
           <Column fillWidth vertical="center" horizontal="center" gap="16">
             <Spinner size="xl" />
@@ -171,7 +188,7 @@ export default function NewCampaignPage() {
         ) : (
           renderStep()
         )}
-      </Card>
+      </Column>
     </Column>
   );
-} 
+}

@@ -15,7 +15,6 @@ import {
   Table,
 } from '@/once-ui/components';
 import { createServerSupabaseClient } from '@/server';
-import { cookies } from 'next/headers';
 import { auth } from '@clerk/nextjs/server';
 
 type Campaign = {

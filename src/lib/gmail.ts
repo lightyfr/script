@@ -75,12 +75,46 @@ export async function sendEmail(
 export async function getUserGmailToken(userId: string) {
   const cookieStore = await cookies();
   const supabase = createServerSupabaseClient();
+  // Fetch all relevant fields
   const { data, error } = await (await supabase)
     .from('user_oauth_tokens')
-    .select('access_token,expires_at')
+    .select('access_token,refresh_token,expires_at')
     .eq('user_id', userId)
     .eq('provider', 'gmail')
     .single();
   if (error || !data) throw new Error('No Gmail token found');
-  return data.access_token;
+
+  let { access_token, refresh_token, expires_at } = data;
+  let isExpired = false;
+  if (expires_at) {
+    const expiry = new Date(expires_at).getTime();
+    // Consider token expired if less than 2 minutes left
+    isExpired = Date.now() > expiry - 2 * 60 * 1000;
+  }
+
+  if (isExpired && refresh_token) {
+    try {
+      oauth2Client.setCredentials({ refresh_token });
+      const { credentials } = await oauth2Client.refreshAccessToken();
+      if (!credentials.access_token) {
+        throw new Error('No access_token returned from refresh');
+      }
+      access_token = credentials.access_token;
+      expires_at = credentials.expiry_date ? new Date(credentials.expiry_date).toISOString() : null;
+      // Update Supabase with new token info
+      await (await supabase)
+        .from('user_oauth_tokens')
+        .update({
+          access_token,
+          expires_at,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .eq('provider', 'gmail');
+    } catch (err) {
+      console.error('Failed to refresh Gmail access token:', err);
+      throw new Error('Gmail access token expired and refresh failed');
+    }
+  }
+  return access_token;
 }

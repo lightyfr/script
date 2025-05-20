@@ -119,21 +119,35 @@ async function generatePersonalizedEmailWithResume(
   professor: Professor,
   resumeUrl: string | null,
   geminiApiKey: string,
-  supabase: any
+  supabase: any,
+  studentInfo: { name: string; email: string; phone?: string | null }
 ): Promise<string> {
+  // Compose a prompt for Gemini to write a fully personalized, natural email
+  let promptText = `You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor.\n\nStudent Information:\n- Name: ${studentInfo.name}\n- Email: ${studentInfo.email}${studentInfo.phone ? `\n- Phone: ${studentInfo.phone}` : ''}\n\nProfessor's Information:\n- Name: ${professor.name}\n- University: ${professor.university}\n- Department: ${professor.department}\n- Research Areas: ${professor.researchAreas.join(", ")}\n\nThe student's resume is provided below. Use the resume to extract and include specific, relevant skills, projects, and experiences.\n\nWrite the email as if the student is writing it themselves, in a natural, engaging, and professional tone.\n\nStrict requirements:\n- Do NOT leave any template language, placeholders, or instructions in the email.\n- Fill in every field with real, specific details from the resume and the professor's research.\n- Mention a specific publication, project, or research area of the professor if possible.\n- Summarize 1-2 relevant skills and 1-2 relevant projects or experiences from the student's resume.\n- The email must be ready to send as-is, with all details filled in.\n- Do NOT include any commentary, instructions, or formatting outside the email body.\n- End with the student's real name and contact information in the signature.\n`;
   if (!resumeUrl) {
     // fallback to text-only prompt
-    return await generatePersonalizedEmailWithGemini(template, professor);
+    const email = await callGemini(promptText);
+    return postProcessStudentPlaceholders(email, studentInfo);
   }
   // Ensure resumeUrl is public or signed
   const publicResumeUrl = await getPublicResumeUrl(supabase, resumeUrl);
-  // Download the PDF
+  // Detect content type
+  const headRes = await fetch(publicResumeUrl, { method: "HEAD" });
+  const contentType = headRes.headers.get("content-type") || "";
+  if (contentType.startsWith("text/plain")) {
+    // Fetch as text and include in prompt
+    const textRes = await fetch(publicResumeUrl);
+    if (!textRes.ok) throw new Error(`Failed to fetch text resume: ${textRes.status} ${textRes.statusText}`);
+    const resumeText = await textRes.text();
+    const textPrompt = `${promptText}\n\n---\n\nStudent Resume (plain text):\n${resumeText}\n\n---\n`;
+    const email = await callGemini(textPrompt);
+    return postProcessStudentPlaceholders(email, studentInfo);
+  }
+  // Download the PDF (default/fallback)
   const pdfBuffer = await fetchFileAsArrayBuffer(publicResumeUrl);
   const pdfSize = pdfBuffer.byteLength;
-  const promptText = `You are an AI assistant helping a student write a personalized email to a professor.\n\nProfessor's Information:\n- Name: ${professor.name}\n- University: ${professor.university}\n- Department: ${professor.department}\n- Research Areas: ${professor.researchAreas.join(", ")}\n\nThe student's resume is attached as a PDF file. Use the attached resume to personalize the email.\n\nEmail Template:\n${template}\n\nPlease generate a personalized version of this email template, replacing the placeholders with the professor's information and using the student's resume as context. Make sure to:\n1. Actually extract and use relevant details from the attached PDF resume.\n2. Make the email feel personal and specific to the professor's research.\n3. Maintain professionalism.\n4. Keep the email concise and focused.\n\nReturn only the personalized email text, without any additional commentary or formatting.`;
   if (pdfSize < 20 * 1024 * 1024) { // <20MB
     const base64Pdf = arrayBufferToBase64(pdfBuffer);
-    // Call Gemini with inline_data
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
     const body = {
       contents: [
@@ -155,7 +169,8 @@ async function generatePersonalizedEmailWithResume(
       throw new Error(`Gemini API error (PDF inline): ${res.status} ${res.statusText} - ${errorText}`);
     }
     const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const email = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    return postProcessStudentPlaceholders(email, studentInfo);
   } else {
     // Use File API for large PDFs
     const fileUri = await uploadPdfToGeminiFileApi(pdfBuffer, "student_resume.pdf", geminiApiKey);
@@ -180,10 +195,71 @@ async function generatePersonalizedEmailWithResume(
       throw new Error(`Gemini API error (PDF file): ${res.status} ${res.statusText} - ${errorText}`);
     }
     const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const email = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    return postProcessStudentPlaceholders(email, studentInfo);
   }
 }
 
+function postProcessStudentPlaceholders(email: string, studentInfo: { name: string; email: string; phone?: string | null }): string {
+  let result = email;
+  result = result.replace(/\[Student Name\]/gi, studentInfo.name);
+  result = result.replace(/\[Student Email\]/gi, studentInfo.email);
+  if (studentInfo.phone) {
+    result = result.replace(/\[Student Phone Number( \(Optional\))?\]/gi, studentInfo.phone);
+  }
+  return result;
+}
+
+// Helper to get a valid Gmail access token, refreshing if needed
+async function getValidGmailAccessToken(supabase: any, userId: string): Promise<string> {
+  // Fetch token info
+  const { data, error } = await supabase
+    .from('user_oauth_tokens')
+    .select('access_token, refresh_token, expires_at')
+    .eq('user_id', userId)
+    .eq('provider', 'gmail')
+    .single();
+  if (error || !data) throw new Error('No Gmail token found');
+  let { access_token, refresh_token, expires_at } = data;
+  let isExpired = false;
+  if (expires_at) {
+    const expiry = new Date(expires_at).getTime();
+    isExpired = Date.now() > expiry - 2 * 60 * 1000;
+  }
+  if (isExpired && refresh_token) {
+    // Refresh using Google OAuth endpoint
+    const params = new URLSearchParams({
+      client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
+      client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
+      refresh_token,
+      grant_type: 'refresh_token',
+    });
+    const resp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error('Failed to refresh Gmail access token: ' + errText);
+    }
+    const json = await resp.json();
+    if (!json.access_token) throw new Error('No access_token returned from refresh');
+    access_token = json.access_token;
+    expires_at = json.expires_in ? new Date(Date.now() + json.expires_in * 1000).toISOString() : null;
+    // Update Supabase
+    await supabase
+      .from('user_oauth_tokens')
+      .update({
+        access_token,
+        expires_at,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('provider', 'gmail');
+  }
+  return access_token;
+}
 
 async function sendEmail(accessToken: string, to: string, subject: string, body: string): Promise<void> {
   const message = [
@@ -249,8 +325,13 @@ serve(async (_req: Request) => {
           .single();
         const { data: studentProfile } = await supabase
           .from("student_profiles")
-          .select("resume_url")
+          .select("resume_url, phone")
           .eq("user_id", campaign.user_id)
+          .single();
+        const { data: userInfo } = await supabase
+          .from("users")
+          .select("firstName, lastName, email")
+          .eq("id", campaign.user_id)
           .single();
         const { data: oauthData } = await supabase
           .from("user_oauth_tokens")
@@ -258,6 +339,12 @@ serve(async (_req: Request) => {
           .eq("user_id", campaign.user_id)
           .eq("provider", "gmail")
           .single();
+        // Compose student info for signature
+        const studentName = userInfo?.firstName && userInfo?.lastName ? `${userInfo.firstName} ${userInfo.lastName}` : userInfo?.firstName || userInfo?.lastName || "";
+        const studentEmail = userInfo?.email || "";
+        const studentPhone = studentProfile?.phone || null;
+        // Get a valid Gmail access token (refresh if needed)
+        const accessToken = await getValidGmailAccessToken(supabase, campaign.user_id);
         // Generate personalized email
         const personalizedEmail = await generatePersonalizedEmailWithResume(
           campaign.email_template,
@@ -270,11 +357,12 @@ serve(async (_req: Request) => {
           },
           studentProfile?.resume_url || null,
           geminiApiKey,
-          supabase
+          supabase,
+          { name: studentName, email: studentEmail, phone: studentPhone }
         );
         // Send email
         await sendEmail(
-          oauthData.access_token,
+          accessToken,
           emailJob.professor_email,
           `Research Interest: ${emailJob.research_areas?.[0] || "Research"}`,
           personalizedEmail

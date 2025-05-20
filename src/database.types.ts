@@ -12,7 +12,6 @@ export type Database = {
       campaigns: {
         Row: {
           created_at: string
-          email_template: string
           error_message: string | null
           id: string
           max_emails: number
@@ -24,7 +23,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          email_template: string
           error_message?: string | null
           id?: string
           max_emails: number
@@ -36,7 +34,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          email_template?: string
           error_message?: string | null
           id?: string
           max_emails?: number
@@ -186,6 +183,59 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_emails: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          department: string | null
+          error_message: string | null
+          id: string
+          professor_email: string
+          professor_name: string
+          research_areas: string[] | null
+          sent_at: string | null
+          status: string
+          university: string | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          department?: string | null
+          error_message?: string | null
+          id?: string
+          professor_email: string
+          professor_name: string
+          research_areas?: string[] | null
+          sent_at?: string | null
+          status?: string
+          university?: string | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          department?: string | null
+          error_message?: string | null
+          id?: string
+          professor_email?: string
+          professor_name?: string
+          research_areas?: string[] | null
+          sent_at?: string | null
+          status?: string
+          university?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_emails_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
         ]
