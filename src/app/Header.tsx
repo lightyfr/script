@@ -1,5 +1,5 @@
 import type React from "react";
-
+import Link from "next/link";
 
 import {
   Button,
@@ -21,16 +21,24 @@ import {
     SignedIn,
     SignedOut,
     UserButton,
+    useClerk
   } from '@clerk/nextjs'
 // Define menu groups for the MegaMenu
 const menuGroups: MenuGroup[] = [
-  { label: "Dashboard", href: "/dashboard" },
+  { label: "Dashboard", href: "/student/dashboard" },
   { label: "Articles", href: "/articles" },
   { label: "Projects", href: "/projects" },
   { label: "Careers", href: "/careers" },
 ];
 
 export const Header: React.FC = () => {
+  const { openSignIn } = useClerk();
+  
+  const handleMenuClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    openSignIn();
+  };
+  
   return (
     <Row position="fixed" paddingTop="s" top="0" fitWidth horizontal="center" zIndex={3}>
       <Row
@@ -46,19 +54,81 @@ export const Header: React.FC = () => {
         paddingLeft="16"
         paddingY="8"
       >
-        <Row position="relative" radius="full" horizontal="center" vertical="center" padding="2" background="neutral-weak" border="neutral-weak" height={2.2} width={2.2}>
-        <SignedOut>
-              <SignInButton/>
-              <SignUpButton />
-            </SignedOut>
-            <SignedIn>
-              <UserButton/>
-            </SignedIn>
+        <Row gap="m" vertical="center">
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', gap: '12px' }}>
+            <img 
+              src="/images/script-logo-main.png" 
+              alt="SCRIPT AI Logo" 
+              height={32}
+              style={{ height: '32px', width: 'auto' }}
+            />
+            <span style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: 600, 
+              color: 'var(--color-neutral-strong)',
+              fontFamily: 'var(--font-sans)'
+            }}>
+              SCRIPT AI
+            </span>
+          </Link>
+          <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--color-neutral-subtle)' }} />
+          <SignedIn>
+            <Row data-border="playful" paddingX="m">
+              <MegaMenu data-rounded="conservative" menuGroups={menuGroups} />
+            </Row>
+          </SignedIn>
+          <SignedOut>
+            <Row 
+              data-border="playful" 
+              paddingX="m" 
+              style={{ cursor: 'pointer' }} 
+              onClick={handleMenuClick}
+            >
+              <MegaMenu data-rounded="conservative" menuGroups={menuGroups.map(item => ({ ...item, href: '#' }))} />
+            </Row>
+          </SignedOut>
         </Row>
-        <Row data-border="playful" paddingX="m">
-        <MegaMenu data-rounded="conservative" menuGroups={menuGroups} />
+        <Row gap="s" horizontal="center" vertical="center">
+          <SignedOut>
+            <SignInButton mode="modal">
+              <Button 
+                data-border="playful" 
+                variant="secondary" 
+                size="s" 
+                label="Sign in"
+                style={{ 
+                  width: 'auto',
+                  minWidth: '80px',
+                  padding: '0 12px',
+                  textAlign: 'center',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+              />
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <Button 
+                data-border="playful" 
+                variant="primary" 
+                size="s" 
+                label="Sign up"
+                style={{ 
+                  width: 'auto',
+                  minWidth: '80px',
+                  padding: '0 12px',
+                  textAlign: 'center',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+              />
+            </SignUpButton>
+          </SignedOut>
+          <SignedIn>
+            <UserButton/>
+          </SignedIn>
         </Row>
-        <Button data-border="playful" size="s" variant="primary" label="Connect"/>
       </Row>
       <Row hide="m" maxHeight={3} position="fixed" right="104" vertical="center">
         <ThemeSwitcher/>
