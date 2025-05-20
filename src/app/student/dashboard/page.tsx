@@ -5,7 +5,7 @@ import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback, Tag
 import { LineChart } from "@/once-ui/modules/data/LineChart";
 import { ChartCard } from "@/app/components/chartCard";
 import { PricingTable, useAuth } from "@clerk/nextjs";
-import { getStudentName } from "./actions";
+import { getStudentName, getStudentDashboardStats } from "./actions";
 
 export default function StudentDashboard() {
   const { addToast } = useToast();
@@ -13,19 +13,34 @@ export default function StudentDashboard() {
   const hasSuper = has && has({ plan: 'script_super' });
   const [userName, setUserName] = useState('Student');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState<{
+    stats: { emailsSent: number; offers: number; responseRate: number };
+    monthlyChartData: Array<{ name: string; activity: number; responseRate: number }>;
+  } | null>(null);
 
   useEffect(() => {
-    const fetchUserName = async () => {
+    const fetchData = async () => {
       try {
         const name = await getStudentName();
         setUserName(name);
+        const statsData = await getStudentDashboardStats();
+        setDashboardStats(statsData);
       } catch (error) {
-        console.error('Error fetching user name:', error);
-        setUserName('Student');
+        console.error('Error fetching dashboard data:', error);
+        setUserName('Student'); // Default or error state
+        // Optionally, set an error state for stats or use default/empty stats
+        setDashboardStats({
+          stats: { emailsSent: 0, offers: 0, responseRate: 0 },
+          monthlyChartData: [
+            { name: "Jan", activity: 0, responseRate: 0 },
+            { name: "Feb", activity: 0, responseRate: 0 },
+            { name: "Mar", activity: 0, responseRate: 0 },
+          ],
+        });
       }
     };
 
-    fetchUserName();
+    fetchData();
   }, []);
 
   const handleUpgradeClick = () => {
@@ -35,10 +50,14 @@ export default function StudentDashboard() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
   };
-  const stats: Array<{ icon: string; label: string; value: string | number; variant: "success" | "info" | "warning" | "danger" }> = [
-    { icon: "mailBulk", label: "Emails Sent", value: 120, variant: "success" },
-    { icon: "sparkles", label: "Offers", value: 11, variant: "info" },
-    { icon: "activity", label: "Response Rate", value: "35%", variant: "warning" },
+  const statsToDisplay = dashboardStats ? [
+    { icon: "mailBulk", label: "Emails Sent", value: dashboardStats.stats.emailsSent, variant: "success" as const },
+    { icon: "sparkles", label: "Offers", value: dashboardStats.stats.offers, variant: "info" as const },
+    { icon: "activity", label: "Response Rate", value: `${dashboardStats.stats.responseRate}%`, variant: "warning" as const },
+  ] : [
+    { icon: "mailBulk", label: "Emails Sent", value: 0, variant: "success" as const },
+    { icon: "sparkles", label: "Offers", value: 0, variant: "info" as const },
+    { icon: "activity", label: "Response Rate", value: "0%", variant: "warning" as const },
   ];
 
   return (
@@ -69,11 +88,7 @@ export default function StudentDashboard() {
         data-viz="divergent"
         fill
         minHeight={20}
-        data={[
-          { name: "Jan", activity: 20, responseRate: 15 },
-          { name: "Feb", activity: 30, responseRate: 25 },
-          { name: "Mar", activity: 50, responseRate: 40 },
-        ]}
+        data={dashboardStats?.monthlyChartData || []}
         series={[
           { key: "activity", color: "#0072ff8e",},
           { key: "responseRate", color: "#00b3008e"},
@@ -85,7 +100,7 @@ export default function StudentDashboard() {
         />
               
       <Row fillWidth gap="24" mobileDirection="column">
-        {stats.map((stat) => (
+        {statsToDisplay.map((stat) => (
           <ChartCard
             key={stat.label}
             variant={stat.variant}
