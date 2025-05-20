@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { Anthropic } from "https://esm.sh/@anthropic-ai/sdk@0.7.0";
-import { google } from "https://esm.sh/googleapis@126.0.1";
 
 // Define types
 interface Professor {
@@ -27,110 +25,106 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const perplexityApiKey = Deno.env.get("PERPLEXITY_API_KEY") ?? "";
 const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+const geminiApiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
+
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const anthropic = new Anthropic({ apiKey: anthropicApiKey });
 
-async function findProfessorsWithPerplexity(interests: string[], universities: string[] = []): Promise<Professor[]> {
+// Gemini API call helper (v1beta endpoint and body)
+async function callGemini(prompt: string): Promise<string> {
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + geminiApiKey;
+  const body = {
+    contents: [
+      {
+        parts: [{ text: prompt }]
+      }
+    ]
+  };
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Gemini API error: ${res.status} ${res.statusText} - ${errorText}`);
+  }
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
+// Mocked function for testing without Gemini API (professor search)
+async function mockFindProfessorsWithGemini(interests: string[], universities: string[] = []): Promise<Professor[]> {
+  return [
+    {
+      name: "Dr. Alice Smith",
+      email: "alice.smith@university.edu",
+      university: universities[0] || "Test University",
+      department: "Computer Science",
+      researchAreas: interests,
+    },
+    {
+      name: "Dr. Bob Johnson",
+      email: "bob.johnson@university.edu",
+      university: universities[1] || "Sample University",
+      department: "Engineering",
+      researchAreas: interests,
+    },
+  ];
+}
+
+// Helper to robustly extract a JSON array from a string (for Gemini output)
+function extractJsonArray(text: string): string {
+  const firstBracket = text.indexOf("[");
+  const lastBracket = text.lastIndexOf("]");
+  if (firstBracket === -1 || lastBracket === -1 || lastBracket < firstBracket) {
+    throw new Error("No JSON array found in Gemini response");
+  }
+  return text.slice(firstBracket, lastBracket + 1);
+}
+
+// Real Gemini-powered professor search
+async function findProfessorsWithGemini(interests: string[], universities: string[] = []): Promise<Professor[]> {
   const interestsStr = interests.join(", ");
   const universitiesStr = universities.length > 0 ? ` at ${universities.join(", ")}` : "";
-
-  const prompt = `Find professors who research ${interestsStr}${universitiesStr}. For each professor, provide:
-1. Full name
-2. Email address
-3. University
-4. Department
-5. Research areas
-
-Format the response as a JSON array of objects with these fields:
-{
-  "name": "Professor's full name",
-  "email": "professor@university.edu",
-  "university": "University name",
-  "department": "Department name",
-  "researchAreas": ["Area 1", "Area 2", ...]
-}
-
-Only include professors whose email addresses are publicly available on their university website or department page.`;
-
-  // Use Perplexity's REST API directly
-  const response = await fetch("https://api.perplexity.ai/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${perplexityApiKey}`,
-    },
-    body: JSON.stringify({
-      model: "sonar-medium-online",
-      messages: [
-        {
-          role: "system",
-          content: "You are a helpful assistant that finds information about professors and their research interests.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1000,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Perplexity API error: ${response.statusText}`);
+  const prompt = `Find professors who research ${interestsStr}${universitiesStr}. For each professor, provide:\n1. Full name\n2. Email address\n3. University\n4. Department\n5. Research areas\n\nFormat the response as a JSON array of objects with these fields:\n{\n  \"name\": \"Professor's full name\",\n  \"email\": \"professor@university.edu\",\n  \"university\": \"University name\",\n  \"department\": \"Department name\",\n  \"researchAreas\": [\"Area 1\", \"Area 2\", ...]\n}\n\nOnly include professors whose email addresses are publicly available on their university website or department page.\n\nIMPORTANT: Output ONLY the JSON array. Do NOT include any explanation, commentary, or text before or after the JSON. Do not say anything else.`;
+  const response = await callGemini(prompt);
+  let jsonStr: string;
+  try {
+    jsonStr = extractJsonArray(response);
+  } catch (e) {
+    console.error("[findProfessorsWithGemini] Failed to extract JSON array from Gemini response:", response);
+    throw e;
   }
-
-  const data = await response.json();
-  const content = data.choices[0].message.content;
-  if (!content) {
-    throw new Error("No response from Perplexity API");
-  }
-
-  return JSON.parse(content);
+  return JSON.parse(jsonStr);
 }
 
-async function generatePersonalizedEmailWithClaude(template: string, professor: Professor): Promise<string> {
-  const prompt = `You are an AI assistant helping a student write a personalized email to a professor.
-
-Professor's Information:
-- Name: ${professor.name}
-- University: ${professor.university}
-- Department: ${professor.department}
-- Research Areas: ${professor.researchAreas.join(", ")}
-
-Email Template:
-${template}
-
-Please generate a personalized version of this email template, replacing the placeholders with the professor's information. Make sure to:
-1. Keep the overall structure and tone of the template
-2. Make the email feel personal and specific to the professor's research
-3. Maintain professionalism
-4. Keep the email concise and focused
-
-Return only the personalized email text, without any additional commentary or formatting.`;
-
-  const response = await anthropic.messages.create({
-    model: "claude-3-sonnet-20240229",
-    max_tokens: 1000,
-    temperature: 0.7,
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
-  });
-
-  return response.content[0].text;
+// Mocked function for testing without Gemini API (email generation)
+async function mockGeneratePersonalizedEmailWithGemini(template: string, professor: Professor): Promise<string> {
+  return `Dear ${professor.name},\n\nThis is a test email generated for ${professor.university} (${professor.department}) about: ${professor.researchAreas.join(", ")}.\n\nTemplate: ${template}\n\nBest regards,\nTest User`;
 }
 
+// Real Gemini-powered personalized email generation
+async function generatePersonalizedEmailWithGemini(template: string, professor: Professor): Promise<string> {
+  const prompt = `You are an AI assistant helping a student write a personalized email to a professor.\n\nProfessor's Information:\n- Name: ${professor.name}\n- University: ${professor.university}\n- Department: ${professor.department}\n- Research Areas: ${professor.researchAreas.join(", ")}\n\nEmail Template:\n${template}\n\nPlease generate a personalized version of this email template, replacing the placeholders with the professor's information. Make sure to:\n1. Keep the overall structure and tone of the template\n2. Make the email feel personal and specific to the professor's research\n3. Maintain professionalism\n4. Keep the email concise and focused\n\nReturn only the personalized email text, without any additional commentary or formatting.`;
+  return await callGemini(prompt);
+}
+
+// Toggle this flag to use mocks for testing
+const USE_MOCKS = false;
+
+// Use mocks if enabled
+const findProfessorsWithGeminiFinal = USE_MOCKS ? mockFindProfessorsWithGemini : findProfessorsWithGemini;
+const generatePersonalizedEmailWithGeminiFinal = USE_MOCKS ? mockGeneratePersonalizedEmailWithGemini : generatePersonalizedEmailWithGemini;
+
+// Mocked function for testing without sending real emails
+async function mockSendEmail(accessToken: string, to: string, subject: string, body: string): Promise<void> {
+  console.log(`Mock sendEmail called for: ${to}, subject: ${subject}`);
+  // No actual sending
+}
+
+// Deno-compatible sendEmail using Gmail REST API
 async function sendEmail(accessToken: string, to: string, subject: string, body: string): Promise<void> {
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: accessToken });
-
-  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-
   const message = [
     "Content-Type: text/plain; charset=UTF-8\n",
     "MIME-Version: 1.0\n",
@@ -140,22 +134,34 @@ async function sendEmail(accessToken: string, to: string, subject: string, body:
     body,
   ].join("");
 
+  // Base64url encode
   const encodedMessage = btoa(message)
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
 
-  await gmail.users.messages.send({
-    userId: "me",
-    requestBody: {
-      raw: encodedMessage,
+  console.log(`[sendEmail] Sending email to: ${to}, subject: ${subject}`);
+
+  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({ raw: encodedMessage }),
   });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`[sendEmail] Gmail API error for ${to}: ${res.status} ${res.statusText} - ${errorText}`);
+    throw new Error(`Gmail API error: ${res.status} ${res.statusText} - ${errorText}`);
+  } else {
+    console.log(`[sendEmail] Email sent successfully to: ${to}`);
+  }
 }
 
 serve(async (req: Request) => {
   let campaignId: string = "";
-  
   try {
     const { campaignId: id } = await req.json();
     campaignId = id;
@@ -189,8 +195,8 @@ serve(async (req: Request) => {
       throw new Error("Gmail access token not found");
     }
 
-    // Find professors
-    const professors = await findProfessorsWithPerplexity(
+    // Find professors (Gemini)
+    const professors = await findProfessorsWithGeminiFinal(
       campaign.research_interests,
       campaign.target_universities
     );
@@ -198,8 +204,8 @@ serve(async (req: Request) => {
     // Process each professor
     for (const professor of professors.slice(0, campaign.max_emails)) {
       try {
-        // Generate personalized email
-        const personalizedEmail = await generatePersonalizedEmailWithClaude(
+        // Generate personalized email (Gemini)
+        const personalizedEmail = await generatePersonalizedEmailWithGeminiFinal(
           campaign.email_template,
           professor
         );
@@ -271,4 +277,4 @@ serve(async (req: Request) => {
       }
     );
   }
-}); 
+});
