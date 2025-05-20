@@ -1,4 +1,4 @@
-import type React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 
 import {
@@ -6,6 +6,7 @@ import {
   Logo,
   IconButton,
   Row,
+  Text,
   StyleOverlay,
   ThemeSwitcher,
   SmartImage,
@@ -22,29 +23,34 @@ import {
     SignedIn,
     SignedOut,
     UserButton,
-    useClerk
   } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs';
 // Define menu groups for the MegaMenu
-const menuGroups: MenuGroup[] = [
-  { label: "Dashboard", href: "/student/dashboard", sections: [
+const staticMenuGroups: MenuGroup[] = [ // Renamed to staticMenuGroups
+  { label: "Features", href: "/features", sections: [
     {
       links: [
-        { label: "Profile", href: "/student/profile", icon: "userGraduate", description: "View your dashboard" },
-
+        { label: "AI-Powered", href: "/features/ai" },
       ]
     }
-  ] },
-  { label: "Articles", href: "/articles" },
-  { label: "Projects", href: "/projects" },
-  { label: "Careers", href: "/careers" },
+  ]},
+  { label: "Prices", href: "/projects" },
+  { label: "Team", href: "/careers" },
 ];
 
 export const Header: React.FC = () => {
-  const { openSignIn } = useClerk();
-  
+  const [isExpanded, setIsExpanded] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsExpanded(true);
+    }, 300); // Short delay before expansion starts
+    return () => clearTimeout(timer);
+  }, []);
+
+  const { user } = useUser();
+
   const handleMenuClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    openSignIn();
   };
   
   return (
@@ -56,14 +62,12 @@ export const Header: React.FC = () => {
         radius="m"
         shadow="s"
         vertical="center"
-        horizontal="space-between"
-        maxWidth="l"
-        paddingRight="16"
+        paddingRight="0"
         paddingLeft="16"
         paddingY="8"
       >
-        <Row gap="m" vertical="center">
-          <Row>
+        {/* Logo part - always visible */}
+        <Row>
           <SmartLink unstyled href="/">
             <img 
               src="/images/script-logo-main.png" 
@@ -80,65 +84,98 @@ export const Header: React.FC = () => {
               Script
             </span>
           </SmartLink>
-          </Row>
-          
-          <SignedIn>
-            <Row data-border="playful" paddingX="xs" paddingLeft="0">
-              <MegaMenu data-border="rounded" menuGroups={menuGroups} />
-            </Row>
-          </SignedIn>
-          <SignedOut>
-            <Row 
-              data-border="playful" 
-              paddingX="m" 
-              style={{ cursor: 'pointer' }} 
-              onClick={handleMenuClick}
-            >
-              <MegaMenu data-rounded="rounded" menuGroups={menuGroups.map(item => ({ ...item, href: '#' }))} />
-            </Row>
-          </SignedOut>
         </Row>
-        <Row gap="s" horizontal="center" vertical="center">
-          <SignedOut>
-            <SignInButton mode="modal">
-              <Button 
+          
+        {/* Animated Content Wrapper - This will expand */}
+        <Row 
+           paddingX="xs"
+          vertical="center"
+          style={{
+            opacity: isExpanded ? 1 : 0,
+            maxWidth: isExpanded ? '600px' : '0px', // Adjust 600px if content is wider
+            overflow: 'hidden',
+            whiteSpace: 'nowrap', // Prevents content from wrapping during transition
+            transition: 'opacity 0.5s ease-in-out, max-width 0.7s ease-in-out', // Smoother transition
+            transitionDelay: isExpanded ? '0.1s' : '0s', // Adjusted delay slightly
+          }}
+        >
+          {/* Group 1: MegaMenu */}
+          <Row vertical="center" paddingX="xs" fitWidth  >
+            <SignedIn>
+              <Row data-border="playful" paddingLeft="0"style={{ cursor: 'pointer' }} onClick={handleMenuClick}>
+                <MegaMenu data-border="rounded" menuGroups={staticMenuGroups} />
+              </Row>
+            </SignedIn>
+            <SignedOut>
+              <Row 
+              padding="0"
                 data-border="playful" 
-                variant="secondary" 
-                size="s" 
-                label="Sign in"
-                style={{ 
-                  width: 'auto',
-                  minWidth: '80px',
-                  padding: '0 12px',
-                  textAlign: 'center',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}
-              />
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <Button 
-                data-border="playful" 
-                variant="primary" 
-                size="s" 
-                label="Sign up"
-                style={{ 
-                  width: 'auto',
-                  minWidth: '80px',
-                  padding: '0 12px',
-                  textAlign: 'center',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}
-              />
-            </SignUpButton>
-          </SignedOut>
+                style={{ cursor: 'pointer' }} 
+                onClick={handleMenuClick}
+              >
+                <MegaMenu data-rounded="rounded" menuGroups={staticMenuGroups} />
+              </Row>
+            </SignedOut>
+          </Row>
+
+          {/* Group 2: Auth Buttons / Dashboard Button */}
+          <Row vertical="center" fitWidth>
+            <SignedOut>
+                 <Row gap="8" background="surface"  padding="4" radius="xs" horizontal="center" vertical="center">
+              <SignInButton mode="modal">
+                <Button 
+                  data-border="playful" 
+                  variant="secondary" 
+                  size="s" 
+                  label="Sign in"
+                />
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <Button 
+                  data-border="playful" 
+                  variant="primary" 
+                  size="s" 
+                  label="Sign up"
+                />
+              </SignUpButton>
+                </Row>
+            </SignedOut>
+            <SignedIn>
+              <Button label="Dashboard" size="s" data-border="playful" variant="primary"/>
+            </SignedIn>
+          </Row>
         </Row>
       </Row>
-      <Row hide="m" maxHeight={3} position="fixed" right="104" vertical="center">
+      <Row 
+        hide="m" 
+        maxHeight={3} 
+        position="fixed" 
+        right="104" 
+        vertical="center"
+        style={{
+          opacity: isExpanded ? 1 : 0,
+          transition: 'opacity 0.6s ease-in-out', // Smoother transition
+          transitionDelay: isExpanded ? '0.5s' : '0s', // Delay for ThemeSwitcher to appear after main content
+        }}
+      >
         <ThemeSwitcher/>
+      </Row>
+      <Row 
+        hide="m" 
+        maxHeight={3} 
+        position="fixed" 
+        left="104" 
+        vertical="center"
+        style={{
+          opacity: isExpanded ? 1 : 0,
+          transition: 'opacity 0.6s ease-in-out', // Smoother transition
+          transitionDelay: isExpanded ? '0.5s' : '0s', // Delay for ThemeSwitcher to appear after main content
+        }}
+      >
+        <UserButton/>
+        <Text paddingLeft="xs" variant="heading-strong-xs">
+          {user?.firstName || 'User'}
+          </Text>
       </Row>
     </Row>
   );

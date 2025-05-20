@@ -102,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
   );
 
   const profileDropdownContent = (
-    <Flex direction="column" gap="2" vertical="center" background="surface" radius="m" minWidth={17}>
+    <Flex direction="column" gap="2" vertical="center" background="neutral-weak" radius="m" minWidth={17}>
       <Row padding="8" paddingX="s" horizontal="space-between" gap="16" vertical="center"> 
         <Row gap="16" vertical="center">
         <img

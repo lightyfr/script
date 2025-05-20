@@ -2,8 +2,8 @@
     border-color: var(--static-transparent);
   
     &:hover, &:focus {
-        background: var(--neutral-alpha-weak);
-        border-color: var(--neutral-alpha-medium);
+        background: var(--neutral-background-medium);
+        border-color: var(--neutral-alpha-weak);
     }
     
     &.selected {
@@ -22,7 +22,7 @@
         &:hover, &:focus {
             background: var(--danger-alpha-weak);
             color: var(--danger-on-solid-strong);
-            border-color: var(--danger-border-medium);
+            border-color: var(--danger-alpha-weak);
         }
     }
   }

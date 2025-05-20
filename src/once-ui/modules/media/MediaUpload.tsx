@@ -11,7 +11,7 @@ interface MediaUploadProps extends React.ComponentProps<typeof Flex> {
   aspectRatio?: string;
   className?: string;
   style?: React.CSSProperties;
-  initialPreviewImage?: string | null;
+  fileUrl?: string | null; // Renamed from initialPreviewImage
   emptyState?: React.ReactNode;
   quality?: number;
   sizes?: string;
@@ -42,7 +42,7 @@ const MediaUpload = forwardRef<HTMLInputElement, MediaUploadProps>(
       loading = false,
       sizes,
       children,
-      initialPreviewImage = null,
+      fileUrl = null, // Renamed from initialPreviewImage
       pdfMode = false,
       accept = pdfMode ? ".pdf,application/pdf" : "image/*",
       ...rest
@@ -50,16 +50,26 @@ const MediaUpload = forwardRef<HTMLInputElement, MediaUploadProps>(
     ref,
   ) => {
     const [dragActive, setDragActive] = useState(false);
-    const [previewImage, setPreviewImage] = useState<string | null>(initialPreviewImage); // Use prop as initial state
+    const [previewImage, setPreviewImage] = useState<string | null>(fileUrl); // Use prop as initial state
     const [uploading, setUploading] = useState(false);
     const [isPdf, setIsPdf] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-      if (initialPreviewImage) {
-        setPreviewImage(initialPreviewImage);
+      // Update previewImage if fileUrl prop changes (e.g., after successful upload)
+      if (fileUrl) {
+        setPreviewImage(fileUrl);
+        if (pdfMode && fileUrl.endsWith('.pdf')) { // Basic check, adjust if URLs are more complex
+          setIsPdf(true);
+        } else if (!pdfMode) {
+          setIsPdf(false);
+        }
+      } else {
+        // If fileUrl is cleared, reset previewImage
+        setPreviewImage(null);
+        setIsPdf(false);
       }
-    }, [initialPreviewImage]);
+    }, [fileUrl, pdfMode]);
 
     const validateFile = (file: File) => {
       if (pdfMode && file.type !== 'application/pdf') {
