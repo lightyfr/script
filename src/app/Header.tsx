@@ -95,7 +95,7 @@ export const Header: React.FC = () => {
             maxWidth: isExpanded ? '600px' : '0px', // Adjust 600px if content is wider
             overflow: 'hidden',
             whiteSpace: 'nowrap', // Prevents content from wrapping during transition
-            transition: 'opacity 0.5s ease-in-out, max-width 0.7s ease-in-out', // Smoother transition
+            transition: 'opacity 1.2s cubic-bezier(.52,.05,.97,.53), max-width 1.5s cubic-bezier(.36,.01,.83,.55)', // Smoother transition
             transitionDelay: isExpanded ? '0.1s' : '0s', // Adjusted delay slightly
           }}
         >
@@ -119,9 +119,9 @@ export const Header: React.FC = () => {
           </Row>
 
           {/* Group 2: Auth Buttons / Dashboard Button */}
-          <Row vertical="center" fitWidth>
+          <Row vertical="center" fitWidth paddingLeft="4">
             <SignedOut>
-                 <Row gap="8" background="surface"  padding="4" radius="xs" horizontal="center" vertical="center">
+                 <Row gap="8" background="surface" padding="4" radius="xs" horizontal="center" vertical="center">
               <SignInButton mode="modal">
                 <Button 
                   data-border="playful" 
