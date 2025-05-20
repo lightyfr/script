@@ -107,11 +107,9 @@ export type Database = {
           created_at: string
           id: string
           open_count: number | null
-          professor_id: string
           sent_at: string
           status: Database["public"]["Enums"]["email_status"] | null
           student_id: string
-          template_id: string
           tracking_id: string | null
           updated_at: string
         }
@@ -120,11 +118,9 @@ export type Database = {
           created_at?: string
           id?: string
           open_count?: number | null
-          professor_id: string
           sent_at?: string
           status?: Database["public"]["Enums"]["email_status"] | null
           student_id: string
-          template_id: string
           tracking_id?: string | null
           updated_at?: string
         }
@@ -133,11 +129,9 @@ export type Database = {
           created_at?: string
           id?: string
           open_count?: number | null
-          professor_id?: string
           sent_at?: string
           status?: Database["public"]["Enums"]["email_status"] | null
           student_id?: string
-          template_id?: string
           tracking_id?: string | null
           updated_at?: string
         }
@@ -150,24 +144,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "email_logs_professor_id_fkey"
-            columns: ["professor_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "email_logs_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_logs_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "email_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -307,7 +287,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_oauth_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
