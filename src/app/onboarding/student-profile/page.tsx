@@ -34,6 +34,7 @@ export default function StudentProfilePage() {
   const { addToast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true); // For initial data loading
+  const [isUploadingResume, setIsUploadingResume] = useState(false); // New state for resume upload
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -98,21 +99,20 @@ export default function StudentProfilePage() {
   
   const handleResumeUpload = async (file: File) => {
     try {
-      setIsLoading(true);
       const url = await uploadResume(file);
       setResumeUrl(url);
     } catch (error) {
       console.error('Error uploading resume:', error);
       addToast({
         variant: 'danger',
-        message: 'Failed to upload resume. Please try again.'
+        message: (error instanceof Error && error.message) || 'Failed to upload resume. Please try again.'
       });
     } finally {
-      setIsLoading(false);
+      setIsUploadingResume(false); // End resume upload loading
     }
   };
 
-  if (isLoading) {
+  if (isLoading) { // This is for the initial page load
     return (
       <Column fillWidth fillHeight vertical="center" horizontal="center" padding="l">
         <Spinner size="xl" />
@@ -168,14 +168,18 @@ export default function StudentProfilePage() {
               onChange={setInterestsInput}
             />
             <Heading>Resume</Heading>
-            <MediaUpload pdfMode onFileUpload={handleResumeUpload}/>
-            <Button 
-              type="submit" 
-              label={isPending ? 'Saving...' : 'Save Profile & Continue'} 
-              variant="primary" 
-              fillWidth 
-              disabled={isPending}
-              arrowIcon={!isPending}
+            <MediaUpload
+              pdfMode
+              onFileUpload={handleResumeUpload}
+              fileUrl={resumeUrl} /* Pass resumeUrl to display the file */
+            />
+            <Button
+              type="submit"
+              label={isPending ? 'Saving...' : 'Save Profile & Continue'}
+              variant="primary"
+              fillWidth
+              disabled={isPending || isUploadingResume} /* Disable submit while uploading resume */
+              arrowIcon={!isPending && !isUploadingResume}
             />
           </Column>
         </form>

@@ -114,33 +114,44 @@ export async function uploadResume(file: File): Promise<string> {
   }
   const clerkUserId = user.id;
   const supabase = await createSupabaseClientWithClerkToken();
-  
-  // Create a unique filename using the user ID and timestamp
+
   const fileExt = file.name.split('.').pop();
   const fileName = `${clerkUserId}_${Date.now()}.${fileExt}`;
   const filePath = `${clerkUserId}/${fileName}`;
-  
-  // Convert file to arrayBuffer for upload
+
   const arrayBuffer = await file.arrayBuffer();
   const fileData = new Uint8Array(arrayBuffer);
-  
-  // Upload file to Supabase Storage
-  const { error } = await supabase
-    .storage
-    .from('student-resumes') // Make sure this bucket exists in your Supabase project
-    .upload(filePath, fileData, {
-    });
-  
-  if (error) {
-    console.error('Error uploading resume:', error);
-    return error.message;
-  }
-  
-  // Get the public URL for the uploaded file
-  const { data: { publicUrl } } = supabase
+
+  const { error: uploadError } = await supabase
     .storage
     .from('student-resumes')
-    .getPublicUrl(filePath);
-  
-  return publicUrl;
+    .upload(filePath, fileData, {
+      contentType: file.type,
+    });
+
+  if (uploadError) {
+    console.error('Error uploading resume to Supabase:', uploadError);
+    throw new Error(`Failed to upload resume: ${uploadError.message}`);
+  }
+
+  // The getPublicUrl method might throw an error directly or return a different structure.
+  // We'll try-catch around it and also check if publicUrl is missing.
+  try {
+    const { data: urlData } = supabase
+      .storage
+      .from('student-resumes')
+      .getPublicUrl(filePath);
+
+    if (!urlData?.publicUrl) {
+      console.error('Public URL was unexpectedly null or undefined after upload.');
+      throw new Error('Failed to retrieve resume URL after upload.');
+    }
+
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error('Error getting public URL for resume:', error);
+    // Ensure the error is an instance of Error to access the message property safely
+    const message = error instanceof Error ? error.message : 'Unknown error getting public URL';
+    throw new Error(`Failed to get resume URL: ${message}`);
+  }
 }

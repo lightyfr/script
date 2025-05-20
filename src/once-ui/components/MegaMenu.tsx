@@ -136,6 +136,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({ menuGroups, className, ...re
         >
           <ToggleButton
             fitHeight
+            fillWidth
             selected={group.selected !== undefined ? group.selected : isSelected(group.href)}
             href={group.href}
           >
@@ -153,6 +154,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({ menuGroups, className, ...re
           pointerEvents="auto"
           opacity={100}
           top="32"
+      
           className={isFirstAppearance ? styles.dropdown : ''}
           style={{
             left: `${dropdownPosition.left}px`,
@@ -169,7 +171,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({ menuGroups, className, ...re
           }}
         >
           <Row
-            background="surface" 
+            background="neutral-weak" 
             radius="l" 
             border="neutral-alpha-weak" 
             shadow="xl" 
@@ -196,7 +198,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({ menuGroups, className, ...re
                         <ToggleButton 
                           key={`link-${linkIndex}`}
                           fitHeight
-                          style={{height: 'fit-content'}}
+                          style={{height: 'fit-content', width: '100%'}}
                           fillWidth 
                           justifyContent="start" 
                           href={link.href}
