@@ -15,7 +15,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 <Sidebar
                     items={[
                         { icon: 'dashboard', tooltip: 'Dashboard' },
-                        { icon: 'stats', tooltip: 'Stats',  },
+                        { icon: 'stats', tooltip: 'Stats' },
                         { icon: 'mail', tooltip: 'Your Mail' },
                         { icon: 'chalkboardTeacher', tooltip: 'Connections' },
                     ]}

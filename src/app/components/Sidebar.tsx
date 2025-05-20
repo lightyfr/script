@@ -17,7 +17,7 @@ import {
 } from "@/once-ui/components";
 import type { IconName } from "@/once-ui/icons";
 import { PricingTable, useAuth, useClerk, useUser } from "@clerk/nextjs";
-import router, { Router } from "next/router";
+import router, { Router, useRouter } from "next/router"; // Added useRouter
 
 interface SidebarItem {
   icon: IconName;
@@ -34,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); // Kept for DropdownWrapper control
   // const dropdownRef = useRef<HTMLDivElement>(null); // No longer needed, DropdownWrapper handles its own ref
-
+  const { pathname } = useRouter(); // Get current pathname
   const { has } = useAuth();
   const { openUserProfile, signOut } = useClerk();
   const { user } = useUser();
@@ -183,6 +183,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
                 tooltip={item.tooltip}
                 variant="tertiary"
                 size="l"
+                selected={item.href === pathname} // Set selected based on current route
               />
             ))}
           </Column>

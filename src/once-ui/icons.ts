@@ -6,6 +6,8 @@ import { FaChalkboardTeacher } from "react-icons/fa";
 import { MdKeyboardDoubleArrowDown } from "react-icons/md";
 import { RiUserSettingsLine } from "react-icons/ri";
 import { FaSignOutAlt } from "react-icons/fa";
+import { IoWarning } from "react-icons/io5";
+import { MdOutlineDangerous } from "react-icons/md";
 
 import {
   HiChevronUp,
@@ -95,6 +97,8 @@ export const iconLibrary: Record<string, IconType> = {
   energy: SlEnergy,
   user: RiUserSettingsLine,
   signOut: FaSignOutAlt,
+  warning: IoWarning,
+  danger: MdOutlineDangerous,
 };
 
 export type IconLibrary = typeof iconLibrary;
