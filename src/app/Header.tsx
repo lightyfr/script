@@ -160,8 +160,14 @@ export const Header: React.FC = () => {
       >
         <ThemeSwitcher/>
       </Row>
+      <SignedIn>
       <Row 
         hide="m" 
+        padding="xs"
+        radius="s"
+        data-border="rounded"
+        border="neutral-alpha-weak"
+        background="surface"
         maxHeight={3} 
         position="fixed" 
         left="104" 
@@ -177,6 +183,7 @@ export const Header: React.FC = () => {
           {user?.firstName || 'User'}
           </Text>
       </Row>
+      </SignedIn>
     </Row>
   );
 };

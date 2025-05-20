@@ -12,6 +12,7 @@ interface CommonProps {
   icon?: IconName;
   id?: string;
   size?: "s" | "m" | "l";
+  selected?: boolean; // Added selected prop
   radius?:
     | "none"
     | "top"
@@ -41,6 +42,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps | AnchorProps>(
       icon = "refresh",
       size = "m",
       id,
+      selected = false, // Added selected prop with default value
       radius,
       tooltip,
       tooltipPosition = "top",
@@ -95,6 +97,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps | AnchorProps>(
           buttonStyles.button,
           buttonStyles[variant],
           iconStyles[size],
+          selected && buttonStyles.selected, // Added selected style
           className,
           radius === "none"
             ? "radius-none"
