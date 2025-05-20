@@ -65,9 +65,14 @@ export async function createCampaign(campaignData: CampaignData) {
     }
 
     // 2. Trigger background job using Supabase Edge Function
-    const { error: jobError } = await supabase.functions.invoke('process-campaign', {
-      body: { campaignId: campaign.id }
-    });
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const { error: jobError } = await supabase.functions.invoke('enqueue-campaign-emails', {
+  body: { campaignId: campaign.id },
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${anonKey}`,
+  },
+});
 
     if (jobError) {
       // Update campaign status to failed if job trigger fails
@@ -76,6 +81,7 @@ export async function createCampaign(campaignData: CampaignData) {
         .update({ status: 'failed', error_message: jobError.message })
         .eq('id', campaign.id);
       
+        console.log(jobError)
       throw new Error(`Failed to start campaign processing: ${jobError.message}`);
     }
 
