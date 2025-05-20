@@ -135,6 +135,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({ menuGroups, className, ...re
           }}
         >
           <ToggleButton
+            fitHeight
             selected={group.selected !== undefined ? group.selected : isSelected(group.href)}
             href={group.href}
           >
@@ -194,7 +195,8 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({ menuGroups, className, ...re
                       {section.links.map((link, linkIndex) => (
                         <ToggleButton 
                           key={`link-${linkIndex}`}
-                          className="fit-height p-4 pr-12"
+                          fitHeight
+                          style={{height: 'fit-content'}}
                           fillWidth 
                           justifyContent="start" 
                           href={link.href}

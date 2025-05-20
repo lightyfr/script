@@ -26,7 +26,14 @@ import {
   } from '@clerk/nextjs'
 // Define menu groups for the MegaMenu
 const menuGroups: MenuGroup[] = [
-  { label: "Dashboard", href: "/student/dashboard" },
+  { label: "Dashboard", href: "/student/dashboard", sections: [
+    {
+      links: [
+        { label: "Profile", href: "/student/profile", icon: "userGraduate", description: "View your dashboard" },
+
+      ]
+    }
+  ] },
   { label: "Articles", href: "/articles" },
   { label: "Projects", href: "/projects" },
   { label: "Careers", href: "/careers" },
@@ -77,7 +84,7 @@ export const Header: React.FC = () => {
           
           <SignedIn>
             <Row data-border="playful" paddingX="xs" paddingLeft="0">
-              <MegaMenu data-rounded="conservative" menuGroups={menuGroups} />
+              <MegaMenu data-border="rounded" menuGroups={menuGroups} />
             </Row>
           </SignedIn>
           <SignedOut>
@@ -87,7 +94,7 @@ export const Header: React.FC = () => {
               style={{ cursor: 'pointer' }} 
               onClick={handleMenuClick}
             >
-              <MegaMenu data-rounded="conservative" menuGroups={menuGroups.map(item => ({ ...item, href: '#' }))} />
+              <MegaMenu data-rounded="rounded" menuGroups={menuGroups.map(item => ({ ...item, href: '#' }))} />
             </Row>
           </SignedOut>
         </Row>

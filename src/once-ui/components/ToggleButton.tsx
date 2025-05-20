@@ -24,6 +24,7 @@ interface CommonProps {
     | "bottom-left";
   justifyContent?: "start" | "center" | "end" | "space-between";
   fillWidth?: boolean;
+  fitHeight?: boolean;
   weight?: "default" | "strong";
   truncate?: boolean;
   prefixIcon?: IconName;
@@ -47,6 +48,7 @@ const ToggleButton = forwardRef<HTMLElement, ToggleButtonProps>(
       radius,
       justifyContent = "center",
       fillWidth = false,
+      fitHeight = false,
       weight = "default",
       truncate = false,
       prefixIcon,
@@ -78,7 +80,7 @@ const ToggleButton = forwardRef<HTMLElement, ToggleButtonProps>(
           "cursor-interactive",
           {
             ["fill-width"]: fillWidth,
-            ["fit-width"]: !fillWidth,
+            ["fit-width"]: fitHeight,
             ["justify-" + justifyContent]: justifyContent,
           },
           className
@@ -92,6 +94,7 @@ const ToggleButton = forwardRef<HTMLElement, ToggleButtonProps>(
         {(label || children) && (
           <Flex
             fillWidth={fillWidth}
+            fitHeight={fitHeight}
             horizontal={justifyContent}
             padding={size === "s" ? "2" : "4"}
             textWeight={weight}
