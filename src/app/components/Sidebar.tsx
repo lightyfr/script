@@ -17,7 +17,7 @@ import {
 } from "@/once-ui/components";
 import type { IconName } from "@/once-ui/icons";
 import { PricingTable, useAuth, useClerk, useUser } from "@clerk/nextjs";
-import router, { Router, useRouter } from "next/router"; // Added useRouter
+import { usePathname, useRouter } from "next/navigation"; // Fixed import for app directory
 
 interface SidebarItem {
   icon: IconName;
@@ -34,7 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); // Kept for DropdownWrapper control
   // const dropdownRef = useRef<HTMLDivElement>(null); // No longer needed, DropdownWrapper handles its own ref
-  const { pathname } = useRouter(); // Get current pathname
+  const pathname = usePathname(); // Fixed for app directory
+  const router = useRouter(); // Fixed for app directory
   const { has } = useAuth();
   const { openUserProfile, signOut } = useClerk();
   const { user } = useUser();
@@ -54,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
   const handleSignOut = async () => {
     if (signOut) {
       await signOut();
-      router.push('/'); // Redirect to home page after sign-out
+      router.push('/'); // Fixed for app directory
     }
     setIsProfileDropdownOpen(false); // Close dropdown after action
   };
@@ -173,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
           >
             {/* DropdownWrapper handles rendering its trigger and dropdown */}
           </DropdownWrapper>
-          <Column paddingTop="s" gap="2">
+          <Column paddingTop="s" gap="8">
             {items.map((item, idx) => (
               <IconButton
                 key={idx}

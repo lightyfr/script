@@ -9,8 +9,20 @@
     -webkit-tap-highlight-color: transparent;
     transition: var(--transition-micro-medium);
 
-    &:hover, &:focus {
+    &:focus {
         z-index: 1;
+        background-color: var(--neutral-alpha-medium);
+
+    }
+
+    &:hover {
+        z-index: 1;
+
+    }
+
+    &.select {
+        border-color: var(--neutral-alpha-medium);
+        background-color: var(--neutral-alpha-medium);
     }
 
     &:disabled {
