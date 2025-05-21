@@ -3,6 +3,7 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
+import styles from "./styles.module.scss";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heading,
@@ -147,6 +148,27 @@ export default function Home() {
               height: 80,
               width: 75,
               x: 100,
+              y: 0,
+              colorStart: "accent-solid-medium",
+              colorEnd: "static-transparent",
+            }}
+          />
+
+           <Background
+           className={styles.background}
+            mask={{
+              x: 80,
+              y: 8,
+              radius: 100,
+            }}
+            position="absolute"
+            zIndex={-1}
+            gradient={{
+              display: true,
+              tilt: -30,
+              height: 80,
+              width: 75,
+              x: 180,
               y: 0,
               colorStart: "accent-solid-medium",
               colorEnd: "static-transparent",
