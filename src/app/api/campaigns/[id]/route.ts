@@ -37,7 +37,7 @@ export async function GET(
 
     // Get campaign emails
     const { data: emails, error: emailsError } = await supabase
-      .from('campaign_emails')
+      .from('pending_emails')
       .select('*')
       .eq('campaign_id', params.id)
       .order('created_at', { ascending: false });
