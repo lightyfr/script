@@ -4,7 +4,6 @@ import { createServerSupabaseClient } from '@/server';
 import { cookies } from 'next/headers';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import type { Database } from '@/database.types';
-import { findProfessorsWithPerplexity } from '@/lib/perplexity';
 import { sendEmail } from '@/lib/gmail';
 import type { CookieOptions } from '@supabase/ssr';
 
