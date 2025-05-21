@@ -140,6 +140,8 @@ export default function Home() {
               y: 8,
               radius: 100,
             }}
+              opacity={90}
+
             position="absolute"
             zIndex={-1}
             gradient={{

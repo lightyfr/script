@@ -200,3 +200,28 @@ async function createSupabaseClientWithClerkToken() {
   };
   return supabase;
 }
+
+export async function hasUserGmailToken(): Promise<boolean> {
+  const supabase = await createSupabaseClientWithClerkToken();
+  const authData = await auth(); // Await the auth() call
+  const userId = authData.userId;
+
+  if (!userId) {
+    console.error("Error checking Gmail token: User not authenticated");
+    return false; // Or throw an error, depending on desired behavior
+  }
+
+  const { data, error } = await supabase
+    .from("user_oauth_tokens")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("provider", "google") // Assuming 'google' is the provider name for Gmail
+    .maybeSingle(); // Use maybeSingle to get one record or null
+
+  if (error) {
+    console.error("Error fetching Gmail token:", error);
+    return false; // Or handle error appropriately
+  }
+
+  return !!data; // True if data is not null (token exists), false otherwise
+}
