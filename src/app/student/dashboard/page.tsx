@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback, Tag, Dialog, Line, Grid, Avatar } from "@/once-ui/components";
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback, Tag, Dialog, Line, Grid, Avatar, Spinner } from "@/once-ui/components";
 import { LineChart } from "@/once-ui/modules/data/LineChart";
 import { ChartCard } from "@/app/components/chartCard";
 import { PricingTable, useAuth } from "@clerk/nextjs";
-import { getStudentName, getStudentDashboardStats } from "./actions";
+import { getStudentName, getStudentDashboardStats, hasUserGmailToken } from "./actions";
 
 interface StatCardProps {
   title: string;
@@ -58,46 +59,136 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ avatar, name, action, time 
 export default function StudentDashboard() {
   const { addToast } = useToast();
   const { has } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const hasSuper = has && has({ plan: 'script_super' });
   const [userName, setUserName] = useState('Student');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [showGmailFeedback, setShowGmailFeedback] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<{
     stats: { emailsSent: number; applications: number; offers: number; responseRate: number };
     monthlyChartData: Array<{ name: string; activity: number; responseRate: number }>;
   } | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const name = await getStudentName();
-        setUserName(name);
-        const statsData = await getStudentDashboardStats();
-        setDashboardStats(statsData);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        setUserName('Student'); // Default or error state
-        // Optionally, set an error state for stats or use default/empty stats
-        setDashboardStats({
-          stats: { emailsSent: 0, applications: 0, offers: 0, responseRate: 0 },
-          monthlyChartData: [
-            { name: "Jan", activity: 0, responseRate: 0 },
-            { name: "Feb", activity: 0, responseRate: 0 },
-            { name: "Mar", activity: 0, responseRate: 0 },
-          ],
-        });
-      }
-    };
+  const [isGmailConnectDialogOpen, setIsGmailConnectDialogOpen] = useState(false);
+  const [isDialogGmailStatusLoading, setIsDialogGmailStatusLoading] = useState(true);
+  const [isDialogGmailConnected, setIsDialogGmailConnected] = useState(false);
 
-    fetchData();
+  const fetchMainDashboardData = useCallback(async () => {
+    try {
+      const name = await getStudentName();
+      setUserName(name);
+      const statsData = await getStudentDashboardStats();
+      setDashboardStats(statsData);
+      const showFeedback = !(await hasUserGmailToken());
+      setShowGmailFeedback(showFeedback);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setUserName('Student'); 
+      setDashboardStats({
+        stats: { emailsSent: 0, applications: 0, offers: 0, responseRate: 0 },
+        monthlyChartData: [
+          { name: "Jan", activity: 0, responseRate: 0 },
+          { name: "Feb", activity: 0, responseRate: 0 },
+          { name: "Mar", activity: 0, responseRate: 0 },
+        ],
+      });
+      setShowGmailFeedback(true); 
+    }
   }, []);
 
+  useEffect(() => {
+    fetchMainDashboardData();
+  }, [fetchMainDashboardData]);
+
+  const fetchDialogGmailStatus = useCallback(async () => {
+    setIsDialogGmailStatusLoading(true);
+    try {
+      const response = await fetch('/api/email/status');
+      if (!response.ok) throw new Error('Failed to fetch status');
+      const data = await response.json();
+      setIsDialogGmailConnected(data.isConnected);
+    } catch (error) {
+      console.error('Error checking Gmail status in dialog:', error);
+      addToast({
+        variant: 'danger',
+        message: 'Failed to check Gmail connection status',
+      });
+      setIsDialogGmailConnected(false);
+    } finally {
+      setIsDialogGmailStatusLoading(false);
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    const success = searchParams.get('gmail_connect_success');
+    const error = searchParams.get('gmail_connect_error');
+
+    if (success === 'true') {
+      addToast({
+        variant: 'success',
+        message: 'Gmail account connected successfully',
+      });
+      fetchMainDashboardData(); 
+      if (isGmailConnectDialogOpen) {
+        fetchDialogGmailStatus();
+      }
+      router.replace('/student/dashboard', { scroll: false });
+    } else if (error) {
+      addToast({
+        variant: 'danger',
+        message: error || 'Failed to connect Gmail account',
+      });
+      router.replace('/student/dashboard', { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, addToast, fetchMainDashboardData, isGmailConnectDialogOpen, router, fetchDialogGmailStatus]);
+
   const handleUpgradeClick = () => {
-    setIsDialogOpen(true);
+    setIsUpgradeDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
+  const handleCloseUpgradeDialog = () => {
+    setIsUpgradeDialogOpen(false);
   };
+
+  const handleOpenGmailConnectDialog = () => {
+    fetchDialogGmailStatus();
+    setIsGmailConnectDialogOpen(true);
+  };
+
+  const handleCloseGmailConnectDialog = () => {
+    setIsGmailConnectDialogOpen(false);
+  };
+
+  const handleDialogConnectGmail = async () => {
+    setIsDialogGmailStatusLoading(true);
+    try {
+      const currentPath = window.location.pathname;
+      const response = await fetch(`/api/email/oauth-url?redirect_path=${encodeURIComponent(currentPath)}`);
+      if (!response.ok) throw new Error('Failed to get OAuth URL');
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No OAuth URL returned');
+      }
+    } catch (error) {
+      addToast({
+        variant: 'danger',
+        message: 'Failed to start Gmail connection. Please try again.',
+      });
+      setIsDialogGmailStatusLoading(false);
+    }
+  };
+
+  const handleDialogDisconnectGmail = () => {
+    addToast({
+      variant: 'danger',
+      message: 'Disconnect functionality coming soon. Please manage connections via Google Account settings for now.',
+    });
+  };
+
   const statsToDisplay = dashboardStats ? [
     { icon: "mailBulk", label: "Emails Sent", value: dashboardStats.stats.emailsSent, variant: "success" as const },
     { icon: "user", label: "Applications", value: dashboardStats.stats.applications, variant: "success" as const},
@@ -111,7 +202,7 @@ export default function StudentDashboard() {
 
   return (
     <Column fillWidth paddingX="l" paddingY="l" gap="32">
-      <Dialog isOpen={isDialogOpen} onClose={handleCloseDialog} title="Upgrade to Script Super">
+      <Dialog isOpen={isUpgradeDialogOpen} onClose={handleCloseUpgradeDialog} title="Upgrade to Script Super">
         <Line/>
         <Column gap="l" paddingTop="m">
           <Text>
@@ -129,11 +220,67 @@ export default function StudentDashboard() {
         )}
       <Column gap="16">
         <Heading variant="display-strong-m">Welcome Back, {userName}!</Heading>
-        <Feedback actionButtonProps={{variant: "secondary", label: "Open"}} icon variant="success" title="You Have Unread Responses" description="13 Professors just connected back with you!"/>
+        {showGmailFeedback && (
+          <Feedback 
+            actionButtonProps={{
+              variant: "secondary", 
+              label: "Connect Gmail", 
+              onClick: handleOpenGmailConnectDialog
+            }}
+            icon 
+            variant="danger" 
+            title="Connect Your Gmail Account"
+            description="Connect your Gmail account to enable automatic email sending and tracking features."
+          />
+        )}
       </Column>
 
+      {showGmailFeedback && (
+        <Dialog 
+          isOpen={isGmailConnectDialogOpen} 
+          onClose={handleCloseGmailConnectDialog} 
+          title="Manage Gmail Connection"
+        >
+          <Column gap="16" paddingTop="m">
+            {isDialogGmailStatusLoading ? (
+              <Column fillWidth vertical="center" horizontal="center" padding="l" gap="m">
+                <Spinner size="l" />
+                <Text>Checking Gmail connection status...</Text>
+              </Column>
+            ) : isDialogGmailConnected ? (
+              <Column gap="16" fillWidth>
+                <Text color="success" variant="body-strong-m">✓ Gmail account is connected.</Text>
+                <Text onBackground="neutral-weak">
+                  You can now send emails and track responses directly through Script.
+                </Text>
+                <Button
+                  variant="danger"
+                  label="Disconnect Gmail (Coming Soon)"
+                  onClick={handleDialogDisconnectGmail}
+                  disabled 
+                />
+              </Column>
+            ) : (
+              <Column gap="16" fillWidth>
+                <Text variant="body-strong-m">Connect your Gmail account.</Text>
+                <Text onBackground="neutral-weak">
+                  This will allow Script to send emails on your behalf and track their status. 
+                  You will be redirected to Google to authorize the connection.
+                </Text>
+                <Button
+                  variant="primary"
+                  label="Connect Gmail"
+                  onClick={handleDialogConnectGmail}
+                  prefixIcon="mail"
+                />
+              </Column>
+            )}
+          </Column>
+        </Dialog>
+      )}
+
       <Row fillWidth gap="24" mobileDirection="column">
-        {statsToDisplay.map((stat) => (
+        {statsToDisplay.map((stat: any) => (
           <ChartCard
             key={stat.label}
             variant={stat.variant}

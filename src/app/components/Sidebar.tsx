@@ -200,7 +200,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
         )}
         {hasSuper && (
           <Column gap="4" horizontal="center">
-          <Logo wordmark={false} size="xs"/>
+          <img 
+              src="/images/script-logo-main.png" 
+              alt="SCRIPT AI Logo" 
+              height={32}
+              style={{ height: '32px', width: 'auto' }}
+            />
           <Text variant="label-default-s" onBackground="neutral-weak">
             PRO
           </Text>

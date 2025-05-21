@@ -1,5 +1,6 @@
 
 import React from "react";
+import styles from "./../student/dashboard/styles.module.scss";
 import { Column, Flex, Icon, IconButton, Row, Text } from "@/once-ui/components";
 import type { IconName } from "@/once-ui/icons";
 import { UserButton } from "@clerk/nextjs";
@@ -15,6 +16,7 @@ interface ChartCardProps {
 export const ChartCard: React.FC<ChartCardProps> = ({ icon, label, value, variant }) => (
     <Row fillWidth border="neutral-alpha-weak"
         background="neutral-medium"
+        className={styles.card}
         radius="l"
         vertical="center"
         padding="l"
