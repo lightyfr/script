@@ -46,6 +46,7 @@ import {
 // import { CodeBlock, MediaUpload } from "@/once-ui/modules"; // Remove if not used for code or media
 import { ScrollToTop } from "@/once-ui/components/ScrollToTop";
 import { Header } from "./Header";
+import { Testimonial2 } from "./components/Testimonial";
 
 export default function Home() {
   const { addToast } = useToast(); // Keep for potential notifications
@@ -348,7 +349,8 @@ export default function Home() {
             </Column>
           </Row>
         </Column>
-
+      <Testimonial2 title="Script literally did it all for me" content="Script sent thousands of personalized emails to real proffessors for me, I literally only had to click a few buttons"
+      name="Adhitya Nadooli" role="Student " link="adhityanadooli.vercel.app" src="/images/dash.png" avatar="/images/adhi.JPG"/>
         {/* HOW IT WORKS SECTION */}
         <Column fillWidth paddingX="32" paddingY="64" gap="32" horizontal="center" position="relative">
           <Heading as="h2" variant="display-default-l" align="center">
