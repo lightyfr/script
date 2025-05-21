@@ -186,7 +186,7 @@ export default function Home() {
 
 <RevealFx delay={0.1}>
           <Heading paddingTop="0" wrap="balance" variant="display-strong-xl" align="center" marginBottom="16"> {/* Removed paddingTop="80", badge adds space now*/}
-            Connect with Professors{" "} <br/>
+            Connect with <InlineCode radius="xl" padding="m" textType="display" textVariant="display-strong-xl">Professors</InlineCode> {" "} <br/>
             <AnimatePresence mode="wait"> {/* mode="wait" ensures one animation finishes before the next starts */}
               <motion.span
                 key={currentPhrase} // Important: key change triggers the animation
