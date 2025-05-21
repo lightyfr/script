@@ -46,27 +46,6 @@ export default function CampaignDetailsPage() {
   const [emails, setEmails] = useState<CampaignEmail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchCampaignDetails = async () => {
-      try {
-        const response = await fetch(`/api/campaigns/${params.id}`);
-        if (!response.ok) throw new Error('Failed to fetch campaign details');
-        const data = await response.json();
-        setCampaign(data.campaign);
-        setEmails(data.emails);
-      } catch (error) {
-        console.error('Error fetching campaign details:', error);
-        addToast({
-          variant: 'danger',
-          message: 'Failed to load campaign details. Please try refreshing.',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCampaignDetails();
-  }, [params.id, addToast]);
 
   if (isLoading) {
     return (
@@ -114,7 +93,7 @@ export default function CampaignDetailsPage() {
           <Row gap="16" vertical="center">
             <Heading variant="heading-strong-l">Status</Heading>
             <Text
-              variant="body-strong"
+              variant="body-strong-s"
               color={getStatusColor(campaign.status)}
             >
               {campaign.status.toUpperCase()}
@@ -129,11 +108,11 @@ export default function CampaignDetailsPage() {
             <Heading variant="heading-strong-m">Campaign Details</Heading>
             <Row gap="32">
               <Column>
-                <Text variant="body-strong">Research Interests</Text>
+                <Text variant="body-strong-s">Research Interests</Text>
                 <Text>{campaign.research_interests.join(', ')}</Text>
               </Column>
               <Column>
-                <Text variant="body-strong">Target Universities</Text>
+                <Text variant="body-strong-s">Target Universities</Text>
                 <Text>
                   {campaign.target_universities.length > 0
                     ? campaign.target_universities.join(', ')
@@ -141,7 +120,7 @@ export default function CampaignDetailsPage() {
                 </Text>
               </Column>
               <Column>
-                <Text variant="body-strong">Maximum Emails</Text>
+                <Text variant="body-strong-s">Maximum Emails</Text>
                 <Text>{campaign.max_emails}</Text>
               </Column>
             </Row>
@@ -149,26 +128,6 @@ export default function CampaignDetailsPage() {
 
           <Column gap="16">
             <Heading variant="heading-strong-m">Sent Emails</Heading>
-            <Table
-              columns={[
-                { key: 'professor_name', label: 'Professor' },
-                { key: 'university', label: 'University' },
-                { key: 'department', label: 'Department' },
-                { key: 'status', label: 'Status' },
-                { key: 'sent_at', label: 'Sent At' },
-              ]}
-              data={emails.map((email) => ({
-                ...email,
-                status: (
-                  <Text color={email.status === 'sent' ? 'success' : 'danger'}>
-                    {email.status.toUpperCase()}
-                  </Text>
-                ),
-                sent_at: email.sent_at
-                  ? new Date(email.sent_at).toLocaleString()
-                  : '-',
-              }))}
-            />
           </Column>
         </Column>
       </Card>
