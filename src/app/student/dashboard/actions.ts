@@ -44,7 +44,7 @@ export async function getStudentDashboardStats() {
     console.error('Error fetching user campaigns:', userCampaignsError);
     // Return zeroed stats or throw, depending on desired error handling
     return {
-      stats: { emailsSent: 0, offers: 0, responseRate: 0, totalCampaigns: 0 },
+      stats: { emailsSent: 0, applications: 0, offers: 0, responseRate: 0, totalCampaigns: 0 },
       monthlyChartData: processMonthlyData([]), // Ensure processMonthlyData can handle empty or is typed for string status
     };
   }
@@ -65,6 +65,7 @@ export async function getStudentDashboardStats() {
     return {
       stats: {
         emailsSent: 0,
+        applications: 0,
         offers: offers || 0,
         responseRate: 0,
         totalCampaigns: 0,
@@ -130,6 +131,7 @@ export async function getStudentDashboardStats() {
   return {
     stats: {
       emailsSent: emailsSent || 0,
+      applications: 0,
       offers: offers || 0,
       responseRate: parseFloat(responseRate.toFixed(1)) || 0,
       totalCampaigns: totalCampaigns || 0,

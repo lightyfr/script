@@ -50,6 +50,7 @@ import { SlEnergy } from "react-icons/sl";
 import { LuChevronsLeftRight } from "react-icons/lu";
 import { arrow } from "@floating-ui/react-dom";
 import { ImStatsDots } from "react-icons/im";
+import { FaRegClock } from "react-icons/fa";
 
 export const iconLibrary: Record<string, IconType> = {
   chevronUp: HiChevronUp,
@@ -99,6 +100,7 @@ export const iconLibrary: Record<string, IconType> = {
   signOut: FaSignOutAlt,
   warning: IoWarning,
   danger: MdOutlineDangerous,
+  clock: FaRegClock,
 };
 
 export type IconLibrary = typeof iconLibrary;

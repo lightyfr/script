@@ -92,7 +92,6 @@ export default function RootLayout({
       <ThemeProvider>
         <ToastProvider>
           <Column as="body" fillWidth margin="0" padding="0">
-
             {children}
           </Column>
         </ToastProvider>

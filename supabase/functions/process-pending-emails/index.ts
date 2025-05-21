@@ -4,9 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const geminiApiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
-
+const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 
 interface Professor {
   name: string;
@@ -300,7 +299,7 @@ async function sendEmail(accessToken: string, to: string, subject: string, body:
 const BATCH_SIZE = 10; // Number of emails to process per invocation
 
 serve(async (_req: Request) => {
-      console.log("[process-pending-emails] Function invoked");
+  console.log("[process-pending-emails] Function invoked");
   try {
     // Get a batch of pending emails
     const { data: pendingEmails, error } = await supabase
@@ -315,7 +314,10 @@ serve(async (_req: Request) => {
         headers: { "Content-Type": "application/json" },
       });
     }
+    // Track unique campaign_ids processed in this batch
+    const processedCampaignIds = new Set<string>();
     for (const emailJob of pendingEmails) {
+      processedCampaignIds.add(emailJob.campaign_id);
       try {
         // Get campaign and student info
         const { data: campaign } = await supabase
@@ -389,6 +391,29 @@ serve(async (_req: Request) => {
           .from("pending_emails")
           .update({ status: "failed", error_message: err instanceof Error ? err.message : "Unknown error", updated_at: new Date().toISOString() })
           .eq("id", emailJob.id);
+      }
+    }
+    // After processing, check for each campaign if all emails are done, and call finalize-campaign if so
+    for (const campaignId of processedCampaignIds) {
+      // Check if any pending emails remain for this campaign
+      const { count, error: countError } = await supabase
+        .from("pending_emails")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId)
+        .in("status", ["pending"]);
+      if (!countError && count === 0) {
+        // Call finalize-campaign edge function
+        try {
+          await fetch("https://jsldybdbxojaugvnlklz.supabase.co/functions/v1/finalize-campaign", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${supabaseAnonKey}`
+            },
+            body: JSON.stringify({ campaignId }),
+          });
+        } catch (finalizeError) {
+          console.error(`[finalize-campaign] Error finalizing campaign ${campaignId}:`, finalizeError);
+        }
       }
     }
     return new Response(JSON.stringify({ success: true, processed: pendingEmails.length }), {
