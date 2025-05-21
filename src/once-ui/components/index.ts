@@ -43,6 +43,7 @@ export * from "./LogoCloud";
 export * from "./MegaMenu";
 export * from "./NavIcon";
 export * from "./NumberInput";
+export * from "./Media";
 export * from "./Option";
 export * from "./OTPInput";
 export * from "./PasswordInput";

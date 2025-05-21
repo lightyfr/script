@@ -13,14 +13,14 @@ interface ChartCardProps {
 }
 
 export const ChartCard: React.FC<ChartCardProps> = ({ icon, label, value, variant }) => (
-    <Row fillWidth border={`${variant}-alpha-weak`}
-        background="surface"
+    <Row fillWidth border="neutral-alpha-weak"
+        background="neutral-medium"
         radius="l"
         vertical="center"
         padding="l"
         horizontal="space-between">
       <Column>
-        <Text variant="display-default-m" onBackground="neutral-strong">
+        <Text variant="display-strong-m" onBackground="neutral-strong">
           {value}
         </Text>
         <Text variant="body-strong-s" onBackground="neutral-medium">

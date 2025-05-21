@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback, Tag, Dialog, Line, Badge } from "@/once-ui/components";
 import { getStudentCampaigns, CampaignDisplayData } from "./actions"; // Import the action and type
 import styles from "./styles.module.scss"; // Assuming you have a CSS module for styles
-import { StatusTag } from "@/app/components/statusTag";
 export default function StudentCampaignsPage() { // Renamed component for clarity
   const [campaigns, setCampaigns] = useState<CampaignDisplayData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,12 +70,13 @@ export default function StudentCampaignsPage() { // Renamed component for clarit
                 <Column style={{ flex: 1 }} horizontal="center" align="center">
                   <Tag variant={
                     campaign.status === 'completed' ? 'success' :
+                    campaign.status === 'in_progress' ? 'neutral' :
                     campaign.status === 'active' || campaign.status === 'warning' ? 'warning' :
-                    campaign.status === 'draft' ? 'warning' :
+                    campaign.status === 'queued' ? 'neutral' :
                     campaign.status === 'failed' ? 'danger' : 'danger'
                   }
-                  label={campaign.status === 'completed' ? 'Success' : campaign.status === 'active' || campaign.status === 'warning' ? 'Working' : campaign.status === 'draft' ? 'Draft' : 'Failed'}
-                  prefixIcon={campaign.status === 'completed' ? 'check' : campaign.status === 'active' || campaign.status === 'warning' ? 'warning' : campaign.status === 'draft' ? 'draft' : 'danger'}>
+                  label={campaign.status === 'completed' ? 'Success' : campaign.status === 'active' || campaign.status === 'queued' ? 'Queued' : campaign.status === 'in_progress' ? 'In Progress' : campaign.status === 'warning' ? 'Warning' : campaign.status === 'draft' ? 'Draft' : 'Failed'}
+                  prefixIcon={campaign.status === 'completed' ? 'check' : campaign.status === 'active' || campaign.status === 'warning' ? 'warning' : campaign.status === 'queued' ? 'clock' : campaign.status === 'failed' ? 'danger' :  campaign.status === 'in_progress' ? 'clock' : campaign.status === 'draft' ? 'draft' : 'danger'}>
                     {campaign.status}
                   </Tag>
                 </Column>
