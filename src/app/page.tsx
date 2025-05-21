@@ -42,6 +42,7 @@ import {
   // CompareImage,
   ThemeSwitcher,
   RevealFx,
+  Badge,
 } from "@/once-ui/components";
 // import { CodeBlock, MediaUpload } from "@/once-ui/modules"; // Remove if not used for code or media
 import { ScrollToTop } from "@/once-ui/components/ScrollToTop";
@@ -123,16 +124,49 @@ export default function Home() {
       <Header/>
       <Column
         as="main"
-        paddingX="xl"
         position="relative"
         radius="xl"
         horizontal="center"
         // border="neutral-alpha-weak" // Optional border for main content container
-        fillWidth
+        maxWidth="l"
+        overflow="hidden"
         gap="160" // Increased gap between sections
         paddingBottom="80" // Padding at the bottom of the main content
       >
-                  
+                <Background
+            mask={{
+              x: 60,
+              y: 8,
+              radius: 100,
+            }}
+            position="absolute"
+            zIndex={-1}
+            gradient={{
+              display: true,
+              tilt: -30,
+              height: 80,
+              width: 75,
+              x: 100,
+              y: 0,
+              colorStart: "accent-solid-medium",
+              colorEnd: "static-transparent",
+            }}
+          />
+
+          <Background
+            position="absolute"
+            zIndex={-1}
+            gradient={{
+              display: true,
+              tilt: -35,
+              height: 50,
+              width: 75,
+              x: 0,
+              y: 0,
+              colorStart: "accent-solid-medium",
+              colorEnd: "static-transparent",
+            }}
+          />  
           <Background
             mask={{
               x: 0,
@@ -157,36 +191,18 @@ export default function Home() {
           paddingX="32"
           position="relative"
         >
-          <Background
-            mask={{
-              x: 80,
-              y: 0,
-              radius: 100,
-            }}
-            position="absolute"
-            zIndex={-1}
-            gradient={{
-              display: true,
-              tilt: -35,
-              height: 50,
-              width: 75,
-              x: 100,
-              y: 40,
-              colorStart: "accent-solid-medium",
-              colorEnd: "static-transparent",
-            }}
-          />
+          
 
           {/* BADGE / ACCENT ABOVE HEADING */}
           <RevealFx>
-          <InlineCode marginTop="xl" radius="full" shadow="m" fit paddingX="16" paddingY="8" background="accent-alpha-weak" onBackground="accent-strong" marginBottom="16">
+          <Badge marginTop="xl" radius="full" shadow="m" fit paddingX="16" paddingY="8" background="neutral-weak" onBackground="accent-strong" marginBottom="16">
             AI-Powered Outreach ✨
-          </InlineCode>
+          </Badge>
           </RevealFx>
 
 <RevealFx delay={0.1}>
-          <Heading paddingTop="0" wrap="balance" variant="display-strong-xl" align="center" marginBottom="16"> {/* Removed paddingTop="80", badge adds space now*/}
-            Connect with <InlineCode radius="xl" padding="m" textType="display" textVariant="display-strong-xl">Professors</InlineCode> {" "} <br/>
+          <Heading paddingTop="0" style={{opacity: "0.83"}} wrap="balance" variant="display-strong-xl" align="center" marginBottom="16"> {/* Removed paddingTop="80", badge adds space now*/}
+            Connect with <InlineCode radius="xl" paddingX="s" textType="display" textVariant="display-strong-xl">Professors</InlineCode> {" "} <br/>
             <AnimatePresence mode="wait"> {/* mode="wait" ensures one animation finishes before the next starts */}
               <motion.span
                 key={currentPhrase} // Important: key change triggers the animation
@@ -254,7 +270,7 @@ export default function Home() {
             Finding and contacting professors for research is <Text onBackground="neutral-strong" variant="body-strong-m">time-consuming </Text>and often <Text onBackground="neutral-strong" variant="body-strong-m">frustrating </Text>.
           </Text>
           <Row fillWidth gap="24" mobileDirection="column" horizontal="center">
-            <Card fill direction="column" paddingY="48" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
+            <Card fill direction="column" paddingY="48" padding="32" radius="xl" border="neutral-alpha-medium" horizontal="center">
               <Row padding="8" background="neutral-medium" border="neutral-alpha-weak" radius="xl" marginBottom="s">
               <Icon name="search" size="xl" onBackground="accent-strong"/>
               </Row>
@@ -263,7 +279,7 @@ export default function Home() {
               <Text align="center" onBackground="neutral-medium">Spending hours finding professor contacts and research interests.</Text>
               </Column>
             </Card>
-            <Card fill direction="column" paddingY="48" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
+            <Card fill direction="column" paddingY="48" padding="32" radius="xl" border="neutral-alpha-medium" horizontal="center">
               <Row padding="8" background="neutral-medium" border="neutral-alpha-weak" radius="xl" marginBottom="s">
               <Icon name="socialDistance" size="xl" onBackground="accent-strong"/>
               </Row>              <Column gap="4">
@@ -271,7 +287,7 @@ export default function Home() {
               <Text align="center" onBackground="neutral-medium">Struggling to write compelling, personalized emails that get noticed.</Text>
               </Column>
             </Card>
-            <Card fill direction="column" paddingY="48" padding="32" radius="l" border="neutral-alpha-medium" horizontal="center">
+            <Card fill direction="column" paddingY="48" padding="32" radius="xl" border="neutral-alpha-medium" horizontal="center">
               <Row padding="8" background="neutral-medium" border="neutral-alpha-weak" radius="xl" marginBottom="s">
               <Icon name="chartLow" size="xl" onBackground="accent-strong"/>
               </Row>             <Column gap="4">
@@ -365,21 +381,19 @@ export default function Home() {
               3 Simple Steps
             </InlineCode>
           </Heading>
-          <Row fillWidth gap="24" mobileDirection="column" horizontal="stretch" paddingTop="32">
-            <Row fillWidth overflow="hidden">
-          <Row maxWidth="32" borderTop="neutral-alpha-medium" borderBottom="neutral-alpha-medium" />
-          <Row fillWidth border="neutral-alpha-medium" mobileDirection="column">
+          <Row fillWidth mobileDirection="column" gap="24">
             {links.map((link, index) => (
               <Card
                 key={link.href}
                 fillWidth
                 href={link.href}
                 padding="40"
+                paddingY="xl"
                 gap="8"
+                radius="xl"
                 background="page"
                 direction="column"
-                borderRight={index < links.length - 1 ? "neutral-alpha-medium" : undefined}
-                border={undefined}
+                border="neutral-alpha-weak"
               >
                 <Row fillWidth center gap="12">
                   <Text variant="body-strong-m" onBackground="neutral-strong">
@@ -394,8 +408,6 @@ export default function Home() {
             ))}
           </Row>
           <Row maxWidth="32" borderTop="neutral-alpha-medium" borderBottom="neutral-alpha-medium" />
-        </Row>
-          </Row>
         </Column>
 
         {/* FINAL CALL TO ACTION SECTION */}
