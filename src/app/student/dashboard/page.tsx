@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback, Tag, Dialog, Line, Grid, Avatar, Spinner } from "@/once-ui/components";
+import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback, Tag, Dialog, Line, Grid, Avatar, Spinner, Skeleton } from "@/once-ui/components";
 import { LineChart } from "@/once-ui/modules/data/LineChart";
 import { ChartCard } from "@/app/components/chartCard";
 import { PricingTable, useAuth } from "@clerk/nextjs";
@@ -56,7 +56,8 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ avatar, name, action, time 
     </Column>
   </Card>
 );
-export default function StudentDashboard() {
+
+function StudentDashboardInner() {
   const { addToast } = useToast();
   const { has } = useAuth();
   const router = useRouter();
@@ -428,5 +429,13 @@ export default function StudentDashboard() {
         </Row>
       </Column>
     </Column>
+  );
+}
+
+export default function StudentDashboardWrapper() {
+  return (
+    <Suspense fallback={<Skeleton shape="block"/>}>
+      <StudentDashboardInner />
+    </Suspense>
   );
 }
