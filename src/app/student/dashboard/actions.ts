@@ -1,6 +1,5 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { auth } from '@clerk/nextjs/server';
 import { createServerSupabaseClient } from '@/server';
 import type { Database } from '@/database.types';
@@ -215,7 +214,7 @@ export async function hasUserGmailToken(): Promise<boolean> {
     .from("user_oauth_tokens")
     .select("id")
     .eq("user_id", userId)
-    .eq("provider", "google") // Assuming 'google' is the provider name for Gmail
+    .eq("provider", "gmail") // Assuming 'google' is the provider name for Gmail
     .maybeSingle(); // Use maybeSingle to get one record or null
 
   if (error) {

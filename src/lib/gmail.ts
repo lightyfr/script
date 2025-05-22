@@ -1,7 +1,6 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { createServerSupabaseClient } from "@/server";
-import { cookies } from 'next/headers';
 
 // Initialize OAuth2 client
 const oauth2Client = new OAuth2Client(
@@ -73,7 +72,6 @@ export async function sendEmail(
 }
 
 export async function getUserGmailToken(userId: string) {
-  const cookieStore = await cookies();
   const supabase = createServerSupabaseClient();
   // Fetch all relevant fields
   const { data, error } = await (await supabase)
