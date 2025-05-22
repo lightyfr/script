@@ -107,6 +107,42 @@ export default function Home() {
 
   return (
     <Column fillWidth paddingX="s" horizontal="center" flex={1}>
+          <Background
+            mask={{
+              x: 50,
+              y: 6,
+              radius: 100,
+            }}
+            opacity={70}
+            position="absolute"
+            zIndex={-1}
+            gradient={{
+              display: true,
+              tilt: -30,
+              height: 60,
+              width: 75,
+              x: 100,
+              y: 50,
+              colorStart: "accent-solid-medium",
+              colorEnd: "static-transparent",
+            }}
+          />
+         
+          <Background
+            mask={{
+              x: 0,
+              y: 0,
+              radius: 100,
+            }}
+            position="absolute"
+            zIndex={-1}
+            grid={{
+              display: false,
+              width: "0.25rem",
+              color: "neutral-alpha-weak",
+              height: "0.25rem",
+            }}
+          />
       <ScrollToTop><IconButton variant="secondary" icon="chevronUp"/></ScrollToTop>
       <Fade
         zIndex={3}
@@ -134,78 +170,7 @@ export default function Home() {
         gap="160" // Increased gap between sections
         paddingBottom="80" // Padding at the bottom of the main content
       >
-                <Background
-            mask={{
-              x: 60,
-              y: 8,
-              radius: 100,
-            }}
-              opacity={90}
-
-            position="absolute"
-            zIndex={-1}
-            gradient={{
-              display: true,
-              tilt: -30,
-              height: 80,
-              width: 75,
-              x: 100,
-              y: 0,
-              colorStart: "accent-solid-medium",
-              colorEnd: "static-transparent",
-            }}
-          />
-
-           <Background
-           className={styles.background}
-            mask={{
-              x: 80,
-              y: 8,
-              radius: 100,
-            }}
-            position="absolute"
-            zIndex={-1}
-            gradient={{
-              display: true,
-              tilt: -30,
-              height: 80,
-              width: 75,
-              x: 180,
-              y: 0,
-              colorStart: "accent-solid-medium",
-              colorEnd: "static-transparent",
-            }}
-          />
-
-          <Background
-            position="absolute"
-            zIndex={-1}
-            gradient={{
-              display: true,
-              tilt: -35,
-              height: 50,
-              width: 75,
-              x: 0,
-              y: 0,
-              colorStart: "accent-solid-medium",
-              colorEnd: "static-transparent",
-            }}
-          />  
-          <Background
-            mask={{
-              x: 0,
-              y: 50,
-              radius: 100,
-            }}
-            position="absolute"
-            zIndex={-1}
-            grid={{
-              display: false,
-              width: "0.25rem",
-              color: "neutral-alpha-weak",
-              height: "0.25rem",
-            }}
-          />
+   
         {/* HERO SECTION */}
         <Column
           fillWidth
@@ -225,8 +190,8 @@ export default function Home() {
           </RevealFx>
 
 <RevealFx delay={0.1}>
-          <Heading paddingTop="0" style={{opacity: "0.83"}} wrap="balance" variant="display-strong-xl" align="center" marginBottom="16"> {/* Removed paddingTop="80", badge adds space now*/}
-            Connect with <InlineCode radius="xl" paddingX="s" textType="display" textVariant="display-strong-xl">Professors</InlineCode> {" "} <br/>
+          <Heading paddingTop="0" style={{opacity: "0.83", fontSize: '65'}} wrap="balance" variant="display-strong-xl" align="center" marginBottom="16"> {/* Removed paddingTop="80", badge adds space now*/}
+            Connect with <InlineCode radius="xl" padding="s" textType="display" textVariant="display-strong-xl">Professors</InlineCode> {" "} <br/>
             <AnimatePresence mode="wait"> {/* mode="wait" ensures one animation finishes before the next starts */}
               <motion.span
                 key={currentPhrase} // Important: key change triggers the animation

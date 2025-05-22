@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser, useAuth } from "@clerk/nextjs";
 import {
@@ -9,6 +9,7 @@ import {
   Text,
   Spinner,
   useToast,
+  Skeleton,
 } from "@/once-ui/components";
 
 const GMAIL_SCOPES = [
@@ -22,7 +23,7 @@ const GMAIL_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.profile',
 ];
 
-export default function EmailSettingsPage() {
+function EmailSettingsPageInner() {
   const router = useRouter();
   const { user } = useUser();
   const { userId } = useAuth();
@@ -136,5 +137,13 @@ export default function EmailSettingsPage() {
         />
       )}
     </Column>
+  );
+}
+
+export default function EmailSettingsPageWrapper() {
+  return (
+    <Suspense fallback={<Skeleton shape="line"/>}>
+      <EmailSettingsPageInner />
+    </Suspense>
   );
 }
