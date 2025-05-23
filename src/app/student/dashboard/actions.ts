@@ -33,39 +33,24 @@ export async function getStudentDashboardStats() {
     throw new Error('User not authenticated');
   }
 
-  // Fetch user's campaigns
+  // Get user's campaigns first
   const { data: userCampaigns, error: userCampaignsError } = await supabase
     .from('campaigns')
     .select('id')
     .eq('user_id', userId);
 
-  if (userCampaignsError) {
-    console.error('Error fetching user campaigns:', userCampaignsError);
-    // Return zeroed stats or throw, depending on desired error handling
-    return {
-      stats: { emailsSent: 0, applications: 0, offers: 0, responseRate: 0, totalCampaigns: 0 },
-      monthlyChartData: processMonthlyData([]), // Ensure processMonthlyData can handle empty or is typed for string status
-    };
-  }
-
-  if (!userCampaigns || userCampaigns.length === 0) {
-    // No campaigns for the user, so all campaign-related stats are zero
-    // Fetch offers separately as it's not campaign-dependent in the current logic
-    const { count: offers, error: offersError } = await supabase
+  if (userCampaignsError || !userCampaigns || userCampaigns.length === 0) {
+    const { count: offers = 0 } = await supabase
       .from('connections')
       .select('id', { count: 'exact', head: true })
       .eq('student_id', userId)
       .eq('status', 'accepted');
 
-    if (offersError) {
-      console.error('Error fetching offers count:', offersError);
-    }
-
     return {
       stats: {
         emailsSent: 0,
         applications: 0,
-        offers: offers || 0,
+        offers,
         responseRate: 0,
         totalCampaigns: 0,
       },
@@ -76,66 +61,45 @@ export async function getStudentDashboardStats() {
   const campaignIds = userCampaigns.map(c => c.id);
   const totalCampaigns = campaignIds.length;
 
-  // Fetch total emails sent from pending_emails
-  const { count: emailsSent, error: emailsSentError } = await supabase
-    .from('pending_emails')
-    .select('id', { count: 'exact', head: true })
-    .in('campaign_id', campaignIds);
+  // Run all the queries concurrently
+  const [
+    { count: emailsSent = 0 },
+    { count: offers = 0 },
+    { count: repliedEmails = 0 },
+    { data: monthlyActivityData = [] }
+  ] = await Promise.all([
+    supabase
+      .from('pending_emails')
+      .select('id', { count: 'exact', head: true })
+      .in('campaign_id', campaignIds),
+    supabase
+      .from('connections')
+      .select('id', { count: 'exact', head: true })
+      .eq('student_id', userId)
+      .eq('status', 'accepted'),
+    supabase
+      .from('pending_emails')
+      .select('id', { count: 'exact', head: true })
+      .in('campaign_id', campaignIds)
+      .eq('status', 'replied'),
+    supabase
+      .from('pending_emails')
+      .select('created_at, status')
+      .in('campaign_id', campaignIds)
+      .gte('created_at', new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString()),
+  ]);
 
-  if (emailsSentError) {
-    console.error('Error fetching emails sent count from pending_emails:', emailsSentError);
-  }
-
-  // Fetch total offers (accepted connections) - kept as is
-  const { count: offers, error: offersError } = await supabase
-    .from('connections')
-    .select('id', { count: 'exact', head: true })
-    .eq('student_id', userId)
-    .eq('status', 'accepted');
-
-  if (offersError) {
-    console.error('Error fetching offers count:', offersError);
-  }
-
-  // Fetch replied emails from pending_emails (assuming status 'replied' exists)
-  const { count: repliedEmails, error: repliedEmailsError } = await supabase
-    .from('pending_emails')
-    .select('id', { count: 'exact', head: true })
-    .in('campaign_id', campaignIds)
-    .eq('status', 'replied'); // Assumption: 'replied' is a status in pending_emails.status
-
-  if (repliedEmailsError) {
-    console.error('Error fetching replied emails count from pending_emails:', repliedEmailsError);
-  }
-
-  const responseRate = emailsSent && emailsSent > 0 && repliedEmails ? (repliedEmails / emailsSent) * 100 : 0;
-
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-  threeMonthsAgo.setDate(1);
-  threeMonthsAgo.setHours(0, 0, 0, 0);
-
-  const { data: monthlyActivityData, error: monthlyActivityError } = await supabase
-    .from('pending_emails')
-    .select('created_at, status') // pending_emails.status is type string
-    .in('campaign_id', campaignIds)
-    .gte('created_at', threeMonthsAgo.toISOString());
-
-  if (monthlyActivityError) {
-    console.error('Error fetching monthly activity data from pending_emails:', monthlyActivityError);
-  }
-
-  const monthlyChartData = processMonthlyData(monthlyActivityData || []);
+  const responseRate = (emailsSent ?? 0) > 0 ? ((repliedEmails ?? 0) / (emailsSent ?? 0)) * 100 : 0;
 
   return {
     stats: {
-      emailsSent: emailsSent || 0,
+      emailsSent: emailsSent ?? 0,
       applications: 0,
-      offers: offers || 0,
-      responseRate: parseFloat(responseRate.toFixed(1)) || 0,
-      totalCampaigns: totalCampaigns || 0,
+      offers,
+      responseRate: parseFloat(responseRate.toFixed(1)),
+      totalCampaigns,
     },
-    monthlyChartData,
+    monthlyChartData: processMonthlyData(monthlyActivityData || []),
   };
 }
 
