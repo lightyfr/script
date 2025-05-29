@@ -113,7 +113,7 @@ export default function Home() {
               y: 6,
               radius: 100,
             }}
-            opacity={70}
+            opacity={50}
             position="absolute"
             zIndex={-1}
             gradient={{
@@ -175,7 +175,7 @@ export default function Home() {
         <Column
           fillWidth
           horizontal="center"
-          gap="24" // Adjusted gap for a tighter feel with the new badge
+          gap="48" // Adjusted gap for a tighter feel with the new badge
           paddingTop="104" // Kept user's paddingTop adjustment
           paddingX="32"
           position="relative"

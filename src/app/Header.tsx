@@ -18,6 +18,8 @@ import { CodeBlock, MediaUpload } from "@/once-ui/modules";
 import { ScrollToTop } from "@/once-ui/components/ScrollToTop";
 import {
     ClerkProvider,
+    RedirectToSignIn,
+    SignIn,
     SignInButton,
     SignUpButton,
     SignedIn,
@@ -141,7 +143,7 @@ export const Header: React.FC = () => {
                 </Row>
             </SignedOut>
             <SignedIn>
-              <Button label="Dashboard" size="s" data-border="playful" variant="primary"/>
+              <Button label="Dashboard" size="s" data-border="playful" variant="primary" href="/student/dashboard"/>
             </SignedIn>
           </Row>
         </Row>
