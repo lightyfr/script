@@ -6,7 +6,7 @@ import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback, Tag
 import { LineChart } from "@/once-ui/modules/data/LineChart";
 import { ChartCard } from "@/app/components/chartCard";
 import { PricingTable, useAuth } from "@clerk/nextjs";
-import { getStudentName, getStudentDashboardStats, hasUserGmailToken } from "./actions";
+import { getStudentName, getStudentDashboardStats, hasUserGmailToken, getCampaignStatus, getRecentActivity, getConnectionStats } from "./actions";
 
 interface StatCardProps {
   title: string;
@@ -35,23 +35,34 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, positive = tr
 );
 
 interface ActivityItemProps {
-  avatar: string;
-  name: string;
   action: string;
+  name: string;
   time: string;
+  icon?: string;
+  university?: string;
 }
 
-const ActivityItem: React.FC<ActivityItemProps> = ({ avatar, name, action, time }) => (
-  <Card href="#"  background="transparent" border="transparent" gap="16" paddingY="12" paddingX="24" fillWidth>
+const ActivityItem: React.FC<ActivityItemProps> = ({ action, name, time, icon = "user", university }) => (
+  <Card href="#" background="transparent" border="transparent" gap="16" paddingY="12" paddingX="24" fillWidth>
     <Column fillWidth gap="8">
-      <Text variant="body-default-s">
-        {action}
-      </Text>
       <Row vertical="center" gap="12">
-        <Avatar size="xs" src={avatar} />
+        <Icon name={icon as any} size="s" />
+        <Text variant="body-default-s">
+          {action}
+        </Text>
+      </Row>
+      <Row vertical="center" gap="12">
         <Text variant="label-default-s" onBackground="neutral-weak">
           {time}
         </Text>
+        {university && (
+          <>
+            <Text variant="label-default-s" onBackground="neutral-weak">•</Text>
+            <Text variant="label-default-s" onBackground="neutral-weak">
+              {university}
+            </Text>
+          </>
+        )}
       </Row>
     </Column>
   </Card>
@@ -70,6 +81,30 @@ function StudentDashboardInner() {
     stats: { emailsSent: number; applications: number; offers: number; responseRate: number };
     monthlyChartData: Array<{ name: string; activity: number; responseRate: number }>;
   } | null>(null);
+  const [connectionStats, setConnectionStats] = useState<{
+    monthlyConnectionData: Array<{ name: string; activity: number; responseRate: number }>;
+  } | null>(null);
+  const [campaignStatus, setCampaignStatus] = useState<Array<{
+    id: string;
+    name: string;
+    progress: number;
+    status: string;
+    universities: number;
+    interests: number;
+    totalEmails: number;
+    sentEmails: number;
+    repliedEmails: number;
+  }>>([]);
+  const [recentActivity, setRecentActivity] = useState<Array<{
+    id: string;
+    type: 'email' | 'connection';
+    action: string;
+    icon: string;
+    name: string;
+    time: string;
+    timeFormatted: string;
+    university?: string;
+  }>>([]);
 
   const [isGmailConnectDialogOpen, setIsGmailConnectDialogOpen] = useState(false);
   const [isDialogGmailStatusLoading, setIsDialogGmailStatusLoading] = useState(true);
@@ -81,6 +116,12 @@ function StudentDashboardInner() {
       setUserName(name);
       const statsData = await getStudentDashboardStats();
       setDashboardStats(statsData);
+      const campaigns = await getCampaignStatus();
+      setCampaignStatus(campaigns);
+      const activities = await getRecentActivity();
+      setRecentActivity(activities);
+      const connectionData = await getConnectionStats();
+      setConnectionStats(connectionData);
       const showFeedback = !(await hasUserGmailToken());
       setShowGmailFeedback(showFeedback);
     } catch (error) {
@@ -94,6 +135,15 @@ function StudentDashboardInner() {
           { name: "Mar", activity: 0, responseRate: 0 },
         ],
       });
+      setConnectionStats({
+        monthlyConnectionData: [
+          { name: "Jan", activity: 0, responseRate: 0 },
+          { name: "Feb", activity: 0, responseRate: 0 },
+          { name: "Mar", activity: 0, responseRate: 0 },
+        ],
+      });
+      setCampaignStatus([]);
+      setRecentActivity([]);
       setShowGmailFeedback(true); 
     }
   }, []);
@@ -316,17 +366,17 @@ function StudentDashboardInner() {
             data-viz="divergent"
             fill
             minHeight={20}
-            data={[
-              { name: "Jan", activity: 5, responseRate: 20 },
-              { name: "Feb", activity: 12, responseRate: 35 },
-              { name: "Mar", activity: 8, responseRate: 25 },
+            data={connectionStats?.monthlyConnectionData || [
+              { name: "Jan", activity: 2, responseRate: 25 },
+              { name: "Feb", activity: 6, responseRate: 40 },
+              { name: "Mar", activity: 4, responseRate: 30 },
             ]}
             series={[
               { key: "activity", color: "#0072ff8e" },
               { key: "responseRate", color: "#00b3008e" },
             ]}
-            title="Applications"
-            description="Your application activity and response rate over the last three months."
+            title="Connections"
+            description="Your connection requests and acceptance rate over the last three months."
             labels="both"
             curveType="natural"
           />
@@ -335,80 +385,110 @@ function StudentDashboardInner() {
               <Column fillWidth border="neutral-medium" radius="l" overflow="hidden">
                 <Row vertical="center" horizontal="space-between" fillWidth padding="24" gap="16" wrap>
                   <Heading wrap="nowrap" variant="heading-strong-s">
-                    Project status
+                    Campaign Status
                   </Heading>
-                  <Row gap="8">
-                    <Button variant="secondary" size="s">
-                      Weekly
-                    </Button>
-                    <Button size="s">
-                      Monthly
-                    </Button>
-                    <Button variant="secondary" size="s">
-                      Yearly
-                    </Button>
-                  </Row>
+                  <Button size="s" variant="secondary" href="/student/campaigns">
+                    View All
+                  </Button>
                 </Row>
                 
                 <Column fillWidth borderTop="neutral-medium">
-                  {[
-                    { name: "Website Redesign", progress: 75, status: "On Track" },
-                    { name: "Mobile App Development", progress: 45, status: "At Risk" },
-                    { name: "Marketing Campaign", progress: 90, status: "On Track" },
-                    { name: "Product Launch", progress: 30, status: "Delayed" },
-                  ].map((project, index) => (
-                    <Card direction="column" background="transparent" href="#" border="transparent" key={index} fillWidth>
-                      <Row vertical="center" fillWidth horizontal="space-between" padding="24">
-                        <Text variant="body-default-s">
-                          {project.name}
+                  {campaignStatus.length > 0 ? (
+                    campaignStatus.map((campaign, index) => (
+                      <Card direction="column" background="transparent" href={`/student/campaigns/${campaign.id}`} border="transparent" key={campaign.id} fillWidth>
+                        <Column gap="12" padding="24">
+                          <Row vertical="center" fillWidth horizontal="space-between">
+                            <Column gap="4">
+                              <Text variant="body-default-s" color="inherit">
+                                {campaign.name}
+                              </Text>
+                              <Text variant="label-default-s" onBackground="neutral-weak">
+                                {campaign.universities} {campaign.universities === 1 ? 'university' : 'universities'} • {campaign.sentEmails}/{campaign.totalEmails} emails sent
+                              </Text>
+                            </Column>
+                            <Tag variant={
+                              campaign.status === 'Completed' ? 'success' : 
+                              campaign.status === 'Paused' ? 'warning' : 
+                              campaign.status === 'Nearly Done' ? 'info' : 'neutral'
+                            }>
+                              {campaign.status}
+                            </Tag>
+                          </Row>
+                          <Row gap="8" vertical="center">
+                            <Text variant="label-default-s" onBackground="neutral-weak">
+                              Progress: {campaign.progress}%
+                            </Text>
+                            <div style={{ 
+                              width: '100px', 
+                              height: '4px', 
+                              backgroundColor: 'var(--neutral-alpha-weak)', 
+                              borderRadius: '2px',
+                              overflow: 'hidden'
+                            }}>
+                              <div style={{ 
+                                width: `${campaign.progress}%`, 
+                                height: '100%', 
+                                backgroundColor: campaign.status === 'Completed' ? 'var(--brand-on-brand-weak)' : 'var(--accent-medium)',
+                                transition: 'width 0.3s ease'
+                              }} />
+                            </div>
+                          </Row>
+                        </Column>
+                        {index < campaignStatus.length - 1 && <Line />}
+                      </Card>
+                    ))
+                  ) : (
+                    <Card background="transparent" border="transparent" padding="24" fillWidth>
+                      <Column gap="8" horizontal="center" vertical="center">
+                        <Icon name="campaign" size="l" />
+                        <Text variant="body-default-s" onBackground="neutral-weak">
+                          No campaigns yet
                         </Text>
-                        <Tag>
-                          {project.status}
-                        </Tag>
-                      </Row>
-                      <Line />
+                        <Button size="s" variant="secondary" href="/student/campaigns/new">
+                          Create Campaign
+                        </Button>
+                      </Column>
                     </Card>
-                  ))}
+                  )}
                 </Column>
               </Column>
 
               <Column border="neutral-medium" radius="l" fillWidth overflow="hidden">
                 <Row fillWidth vertical="center" horizontal="space-between" padding="24" gap="16" wrap>
                   <Heading wrap="nowrap" variant="heading-strong-s">
-                    Recent activity
+                    Recent Activity
                   </Heading>
                   <Button size="s" variant="secondary" suffixIcon="chevronRight">
-                    View all
+                    View All
                   </Button>
                 </Row>
                 <Column fillWidth borderTop="neutral-medium">
-                  <ActivityItem 
-                    avatar="/images/avatars/01.png"
-                    name="Alex Chen"
-                    action="Completed the Website Redesign task"
-                    time="2 hours ago"
-                  />
-                  <Line />
-                  <ActivityItem 
-                    avatar="/images/avatars/02.png"
-                    name="Sarah Johnson"
-                    action="Commented on Mobile App Development"
-                    time="4 hours ago"
-                  />
-                  <Line />
-                  <ActivityItem 
-                    avatar="/images/avatars/03.png"
-                    name="Michael Brown"
-                    action="Created a new task in Marketing Campaign"
-                    time="Yesterday"
-                  />
-                  <Line />
-                  <ActivityItem 
-                    avatar="/images/avatars/04.png"
-                    name="Emily Davis"
-                    action="Completed 3 tasks in Product Launch"
-                    time="Yesterday"
-                  />
+                  {recentActivity.length > 0 ? (
+                    recentActivity.map((activity, index) => (
+                      <div key={activity.id}>
+                        <ActivityItem 
+                          action={activity.action}
+                          name={activity.name}
+                          time={activity.timeFormatted}
+                          icon={activity.icon}
+                          university={activity.university}
+                        />
+                        {index < recentActivity.length - 1 && <Line />}
+                      </div>
+                    ))
+                  ) : (
+                    <Card background="transparent" border="transparent" padding="24" fillWidth>
+                      <Column gap="8" horizontal="center" vertical="center">
+                        <Icon name="activity" size="l" />
+                        <Text variant="body-default-s" onBackground="neutral-weak">
+                          No recent activity
+                        </Text>
+                        <Text variant="label-default-s" onBackground="neutral-weak">
+                          Start a campaign to see activity here
+                        </Text>
+                      </Column>
+                    </Card>
+                  )}
                 </Column>
               </Column>
             </Grid>    
