@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback, Tag, Dialog, Line, Grid, Avatar, Spinner, Skeleton } from "@/once-ui/components";
 import { LineChart } from "@/once-ui/modules/data/LineChart";
 import { ChartCard } from "@/app/components/chartCard";
-import { PricingTable, useAuth } from "@clerk/nextjs";
+import { PricingTable, useAuth, useSession, useUser } from "@clerk/nextjs";
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/database.types';
 import { getStudentName, getStudentDashboardStats, hasUserGmailToken, getCampaignStatus, getRecentActivity, getConnectionStats } from "./actions";
 
 interface StatCardProps {
@@ -74,6 +76,9 @@ function StudentDashboardInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasSuper = has && has({ plan: 'script_super' });
+  const { user } = useUser();
+  const { session } = useSession();
+  
   const [userName, setUserName] = useState('Student');
   const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
   const [showGmailFeedback, setShowGmailFeedback] = useState(false);
@@ -110,19 +115,34 @@ function StudentDashboardInner() {
   const [isDialogGmailStatusLoading, setIsDialogGmailStatusLoading] = useState(true);
   const [isDialogGmailConnected, setIsDialogGmailConnected] = useState(false);
 
+  const { isLoaded, userId } = useAuth();
+  
+  // Create Supabase client following Clerk documentation pattern
+  const supabaseClient = createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      async accessToken() {
+        return session?.getToken() ?? null
+      },
+    }
+  );
+  
   const fetchMainDashboardData = useCallback(async () => {
+    if (!user || !session || !userId) return;
+    
     try {
-      const name = await getStudentName();
+      const name = await getStudentName(supabaseClient);
       setUserName(name);
-      const statsData = await getStudentDashboardStats();
+      const statsData = await getStudentDashboardStats(supabaseClient, userId);
       setDashboardStats(statsData);
-      const campaigns = await getCampaignStatus();
+      const campaigns = await getCampaignStatus(supabaseClient, userId);
       setCampaignStatus(campaigns);
-      const activities = await getRecentActivity();
+      const activities = await getRecentActivity(supabaseClient, userId);
       setRecentActivity(activities);
-      const connectionData = await getConnectionStats();
+      const connectionData = await getConnectionStats(supabaseClient, userId);
       setConnectionStats(connectionData);
-      const showFeedback = !(await hasUserGmailToken());
+      const showFeedback = !(await hasUserGmailToken(supabaseClient, userId));
       setShowGmailFeedback(showFeedback);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -146,7 +166,7 @@ function StudentDashboardInner() {
       setRecentActivity([]);
       setShowGmailFeedback(true); 
     }
-  }, []);
+  }, [user, session, userId, supabaseClient]);
 
   useEffect(() => {
     fetchMainDashboardData();
