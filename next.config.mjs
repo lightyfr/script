@@ -18,6 +18,16 @@ const nextConfig = {
       bodySizeLimit: '30mb', // or higher, e.g. '20mb'
     },
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'jsldybdbxojaugvnlklz.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/student-resumes/**',
+      },
+    ],
+  },
 };
 
 export default nextConfig;
