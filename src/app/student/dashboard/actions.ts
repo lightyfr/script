@@ -1,14 +1,16 @@
-'use client';
+'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { auth } from '@clerk/nextjs/server';
+import { createServerSupabaseClient } from '@/server';
 import type { Database } from '@/database.types';
 
 /**
  * Fetches the current user's first name from Supabase.
  * Returns 'Student' if no name is set.
  */
-export async function getStudentName(supabaseClient: any): Promise<string> {
-  const { data, error } = await supabaseClient
+export async function getStudentName() {
+  const supabase = await createSupabaseClientWithClerkToken();
+  const { data, error } = await supabase
     .from('users')
     .select('firstName')
     .single();
@@ -21,20 +23,24 @@ export async function getStudentName(supabaseClient: any): Promise<string> {
   return data?.firstName || 'Student';
 }
 
-export async function getStudentDashboardStats(supabaseClient: any, userId: any) {
+export async function getStudentDashboardStats() {
+  const supabase = await createSupabaseClientWithClerkToken();
+  const authData = await auth();
+  const userId = authData.userId;
+
   if (!userId) {
     console.error('Error fetching user data: User not authenticated');
     throw new Error('User not authenticated');
   }
 
   // Get user's campaigns first
-  const { data: userCampaigns, error: userCampaignsError } = await supabaseClient
+  const { data: userCampaigns, error: userCampaignsError } = await supabase
     .from('campaigns')
     .select('id')
     .eq('user_id', userId);
 
   if (userCampaignsError || !userCampaigns || userCampaigns.length === 0) {
-    const { count: offers = 0 } = await supabaseClient
+    const { count: offers = 0 } = await supabase
       .from('connections')
       .select('id', { count: 'exact', head: true })
       .eq('student_id', userId)
@@ -52,11 +58,7 @@ export async function getStudentDashboardStats(supabaseClient: any, userId: any)
     };
   }
 
-  interface Campaign {
-    id: string;
-  }
-
-  const campaignIds: string[] = userCampaigns.map((c: Campaign) => c.id);
+  const campaignIds = userCampaigns.map(c => c.id);
   const totalCampaigns = campaignIds.length;
 
   // Run all the queries concurrently
@@ -66,21 +68,21 @@ export async function getStudentDashboardStats(supabaseClient: any, userId: any)
     { count: repliedEmails = 0 },
     { data: monthlyActivityData = [] }
   ] = await Promise.all([
-    supabaseClient
+    supabase
       .from('pending_emails')
       .select('id', { count: 'exact', head: true })
       .in('campaign_id', campaignIds),
-    supabaseClient
+    supabase
       .from('connections')
       .select('id', { count: 'exact', head: true })
       .eq('student_id', userId)
       .eq('status', 'accepted'),
-    supabaseClient
+    supabase
       .from('pending_emails')
       .select('id', { count: 'exact', head: true })
       .in('campaign_id', campaignIds)
       .eq('status', 'replied'),
-    supabaseClient
+    supabase
       .from('pending_emails')
       .select('created_at, status')
       .in('campaign_id', campaignIds)
@@ -143,13 +145,36 @@ function processMonthlyData(logs: Array<{ created_at: string; status: string | n
 }
 
 
-export async function hasUserGmailToken(supabaseClient: any, userId: any): Promise<boolean> {
+// Helper to instantiate Supabase client with Clerk auth token
+async function createSupabaseClientWithClerkToken() {
+  const authInstance = auth();
+  const clerkToken = await (await authInstance).getToken();
+  if (!clerkToken) {
+    throw new Error('Clerk token not available. Ensure user is authenticated.');
+  }
+
+  const supabase = await createServerSupabaseClient();
+  // Attach Clerk token to global headers if needed
+  (supabase as any).global = {
+    ...(supabase as any).global,
+    headers: {
+      Authorization: `Bearer ${clerkToken}`,
+    },
+  };
+  return supabase;
+}
+
+export async function hasUserGmailToken(): Promise<boolean> {
+  const supabase = await createSupabaseClientWithClerkToken();
+  const authData = await auth(); // Await the auth() call
+  const userId = authData.userId;
+
   if (!userId) {
     console.error("Error checking Gmail token: User not authenticated");
     return false; // Or throw an error, depending on desired behavior
   }
 
-  const { data, error } = await supabaseClient
+  const { data, error } = await supabase
     .from("user_oauth_tokens")
     .select("id")
     .eq("user_id", userId)
@@ -164,14 +189,18 @@ export async function hasUserGmailToken(supabaseClient: any, userId: any): Promi
   return !!data; // True if data is not null (token exists), false otherwise
 }
 
-export async function getCampaignStatus(supabaseClient: any, userId: any) {
+export async function getCampaignStatus() {
+  const supabase = await createSupabaseClientWithClerkToken();
+  const authData = await auth();
+  const userId = authData.userId;
+
   if (!userId) {
     console.error('Error fetching campaign status: User not authenticated');
     return [];
   }
 
   // Fetch user's campaigns with their stats
-  const { data: campaigns, error: campaignsError } = await supabaseClient
+  const { data: campaigns, error: campaignsError } = await supabase
     .from('campaigns')
     .select(`
       id,
@@ -197,19 +226,19 @@ export async function getCampaignStatus(supabaseClient: any, userId: any) {
 
   // For each campaign, get email stats
   const campaignStats = await Promise.all(
-    campaigns.map(async (campaign: any) => {
-      const { count: totalEmails } = await supabaseClient
+    campaigns.map(async (campaign) => {
+      const { count: totalEmails } = await supabase
         .from('pending_emails')
         .select('id', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id);
 
-      const { count: sentEmails } = await supabaseClient
+      const { count: sentEmails } = await supabase
         .from('pending_emails')
         .select('id', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id)
         .not('sent_at', 'is', null);
 
-      const { count: repliedEmails } = await supabaseClient
+      const { count: repliedEmails } = await supabase
         .from('pending_emails')
         .select('id', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id)
@@ -246,7 +275,11 @@ export async function getCampaignStatus(supabaseClient: any, userId: any) {
   return campaignStats;
 }
 
-export async function getRecentActivity(supabaseClient: any, userId: any) {
+export async function getRecentActivity() {
+  const supabase = await createSupabaseClientWithClerkToken();
+  const authData = await auth();
+  const userId = authData.userId;
+
   if (!userId) {
     console.error('Error fetching recent activity: User not authenticated');
     return [];
@@ -256,7 +289,7 @@ export async function getRecentActivity(supabaseClient: any, userId: any) {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   // Get recent email activities
-  const { data: emailActivities, error: emailError } = await supabaseClient
+  const { data: emailActivities, error: emailError } = await supabase
     .from('pending_emails')
     .select(`
       id,
@@ -278,7 +311,7 @@ export async function getRecentActivity(supabaseClient: any, userId: any) {
   }
 
   // Get recent connections
-  const { data: connections, error: connectionsError } = await supabaseClient
+  const { data: connections, error: connectionsError } = await supabase
     .from('connections')
     .select(`
       id,
@@ -308,7 +341,7 @@ export async function getRecentActivity(supabaseClient: any, userId: any) {
 
   // Process email activities
   if (emailActivities) {
-    emailActivities.forEach((email: any) => {
+    emailActivities.forEach(email => {
       let action = '';
       let icon = 'mail';
       
@@ -339,7 +372,7 @@ export async function getRecentActivity(supabaseClient: any, userId: any) {
 
   // Process connection activities
   if (connections) {
-    connections.forEach((connection: any) => {
+    connections.forEach(connection => {
       const professorName = connection.users ? 
         `${connection.users.firstName ?? ''} ${connection.users.lastName ?? ''}`.trim() : 
         'Professor';
@@ -397,7 +430,11 @@ function formatTimeAgo(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-export async function getConnectionStats(supabaseClient: any, userId: any) {
+export async function getConnectionStats() {
+  const supabase = await createSupabaseClientWithClerkToken();
+  const authData = await auth();
+  const userId = authData.userId;
+
   if (!userId) {
     console.error('Error fetching connection stats: User not authenticated');
     return {
@@ -411,7 +448,7 @@ export async function getConnectionStats(supabaseClient: any, userId: any) {
   threeMonthsAgo.setHours(0, 0, 0, 0);
 
   // Get connection data for the last 3 months
-  const { data: connections, error: connectionsError } = await supabaseClient
+  const { data: connections, error: connectionsError } = await supabase
     .from('connections')
     .select('created_at, status, updated_at')
     .eq('student_id', userId)
@@ -439,29 +476,17 @@ export async function getConnectionStats(supabaseClient: any, userId: any) {
 
   // Process connections
   if (connections) {
-    interface ConnectionLog {
-      created_at: string;
-      status: string;
-      updated_at: string;
-    }
-
-    interface MonthlyConnectionActivity {
-      name: string;
-      activity: number;
-      accepted: number;
-    }
-
-    (connections as ConnectionLog[]).forEach((connection: ConnectionLog) => {
-      const date: Date = new Date(connection.created_at);
-      const monthKey: string = monthNames[date.getMonth()];
-      const year: number = date.getFullYear();
-      const monthYearKey: string = `${monthKey}-${year}`;
+    connections.forEach(connection => {
+      const date = new Date(connection.created_at);
+      const monthKey = monthNames[date.getMonth()];
+      const year = date.getFullYear();
+      const monthYearKey = `${monthKey}-${year}`;
 
       if (monthActivity[monthYearKey]) {
-      (monthActivity[monthYearKey] as MonthlyConnectionActivity).activity++;
-      if (connection.status === 'accepted') {
-        (monthActivity[monthYearKey] as MonthlyConnectionActivity).accepted++;
-      }
+        monthActivity[monthYearKey].activity++;
+        if (connection.status === 'accepted') {
+          monthActivity[monthYearKey].accepted++;
+        }
       }
     });
   }
