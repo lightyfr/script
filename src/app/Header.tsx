@@ -124,7 +124,7 @@ export const Header: React.FC = () => {
           <Row vertical="center" fitWidth paddingLeft="4">
             <SignedOut>
                  <Row gap="8" background="surface" padding="4" radius="xs" horizontal="center" vertical="center">
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" forceRedirectUrl={"/student/dashboard"}>
                 <Button 
                   data-border="playful" 
                   variant="secondary" 
@@ -132,7 +132,7 @@ export const Header: React.FC = () => {
                   label="Sign in"
                 />
               </SignInButton>
-              <SignUpButton mode="modal">
+              <SignUpButton mode="modal" forceRedirectUrl={"/onboarding/select-role"}>
                 <Button 
                   data-border="playful" 
                   variant="primary" 
