@@ -40,14 +40,21 @@ const staticMenuGroups: MenuGroup[] = [ // Renamed to staticMenuGroups
   { label: "Team", href: "/careers" },
 ];
 
-export const Header: React.FC = () => {
-  const [isExpanded, setIsExpanded] = useState(false);
+interface HeaderProps {
+  animateOnMount?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ animateOnMount = false }) => {
+  const [isExpanded, setIsExpanded] = useState(!animateOnMount);
+  
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsExpanded(true);
-    }, 300); // Short delay before expansion starts
-    return () => clearTimeout(timer);
-  }, []);
+    if (animateOnMount) {
+      const timer = setTimeout(() => {
+        setIsExpanded(true);
+      }, 300); // Short delay before expansion starts
+      return () => clearTimeout(timer);
+    }
+  }, [animateOnMount]);
 
   const { user } = useUser();
 

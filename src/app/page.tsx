@@ -158,7 +158,7 @@ export default function Home() {
         fillWidth
         blur={0.25}
       />
-      <Header/>
+      <Header animateOnMount/>
       <Column
         as="main"
         position="relative"
