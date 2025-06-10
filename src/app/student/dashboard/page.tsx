@@ -7,7 +7,6 @@ import { LineChart } from "@/once-ui/modules/data/LineChart";
 import { ChartCard } from "@/app/components/chartCard";
 import { PricingTable, useAuth } from "@clerk/nextjs";
 import { getStudentName, getStudentDashboardStats, hasUserGmailToken, getCampaignStatus, getRecentActivity, getConnectionStats } from "./actions";
-import useSWR from 'swr';
 
 interface StatCardProps {
   title: string;
@@ -69,30 +68,132 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ action, name, time, icon = 
   </Card>
 );
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
-
 function StudentDashboardInner() {
   const { addToast } = useToast();
   const { has } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasSuper = has && has({ plan: 'script_super' });
+  const [userName, setUserName] = useState('Student');
   const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [showGmailFeedback, setShowGmailFeedback] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState<{
+    stats: { emailsSent: number; applications: number; offers: number; responseRate: number };
+    monthlyChartData: Array<{ name: string; activity: number; responseRate: number }>;
+  } | null>(null);
+  const [connectionStats, setConnectionStats] = useState<{
+    monthlyConnectionData: Array<{ name: string; activity: number; responseRate: number }>;
+  } | null>(null);
+  const [campaignStatus, setCampaignStatus] = useState<Array<{
+    id: string;
+    name: string;
+    progress: number;
+    status: string;
+    universities: number;
+    interests: number;
+    totalEmails: number;
+    sentEmails: number;
+    repliedEmails: number;
+  }>>([]);
+  const [recentActivity, setRecentActivity] = useState<Array<{
+    id: string;
+    type: 'email' | 'connection';
+    action: string;
+    icon: string;
+    name: string;
+    time: string;
+    timeFormatted: string;
+    university?: string;
+  }>>([]);
+
   const [isGmailConnectDialogOpen, setIsGmailConnectDialogOpen] = useState(false);
   const [isDialogGmailStatusLoading, setIsDialogGmailStatusLoading] = useState(true);
   const [isDialogGmailConnected, setIsDialogGmailConnected] = useState(false);
 
-  const { data, error, isLoading, mutate } = useSWR('/api/student/dashboard', fetcher, {
-    revalidateOnFocus: true,
-    dedupingInterval: 10000,
-  });
+  const fetchMainDashboardData = useCallback(async () => {
+    try {
+      const name = await getStudentName();
+      setUserName(name);
+      const statsData = await getStudentDashboardStats();
+      setDashboardStats(statsData);
+      const campaigns = await getCampaignStatus();
+      setCampaignStatus(campaigns);
+      const activities = await getRecentActivity();
+      setRecentActivity(activities);
+      const connectionData = await getConnectionStats();
+      setConnectionStats(connectionData);
+      const showFeedback = !(await hasUserGmailToken());
+      setShowGmailFeedback(showFeedback);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setUserName('Student'); 
+      setDashboardStats({
+        stats: { emailsSent: 0, applications: 0, offers: 0, responseRate: 0 },
+        monthlyChartData: [
+          { name: "Jan", activity: 0, responseRate: 0 },
+          { name: "Feb", activity: 0, responseRate: 0 },
+          { name: "Mar", activity: 0, responseRate: 0 },
+        ],
+      });
+      setConnectionStats({
+        monthlyConnectionData: [
+          { name: "Jan", activity: 0, responseRate: 0 },
+          { name: "Feb", activity: 0, responseRate: 0 },
+          { name: "Mar", activity: 0, responseRate: 0 },
+        ],
+      });
+      setCampaignStatus([]);
+      setRecentActivity([]);
+      setShowGmailFeedback(true); 
+    }
+  }, []);
 
-  const userName = data?.userName ?? 'Student';
-  const dashboardStats = data?.dashboardStats ?? null;
-  const campaignStatus = data?.campaignStatus ?? [];
-  const recentActivity = data?.recentActivity ?? [];
-  const connectionStats = data?.connectionStats ?? null;
-  const showGmailFeedback = data?.showGmailFeedback ?? false;
+  useEffect(() => {
+    fetchMainDashboardData();
+  }, [fetchMainDashboardData]);
+
+  const fetchDialogGmailStatus = useCallback(async () => {
+    setIsDialogGmailStatusLoading(true);
+    try {
+      const response = await fetch('/api/email/status');
+      if (!response.ok) throw new Error('Failed to fetch status');
+      const data = await response.json();
+      setIsDialogGmailConnected(data.isConnected);
+    } catch (error) {
+      console.error('Error checking Gmail status in dialog:', error);
+      addToast({
+        variant: 'danger',
+        message: 'Failed to check Gmail connection status',
+      });
+      setIsDialogGmailConnected(false);
+    } finally {
+      setIsDialogGmailStatusLoading(false);
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    const success = searchParams.get('gmail_connect_success');
+    const error = searchParams.get('gmail_connect_error');
+
+    if (success === 'true') {
+      addToast({
+        variant: 'success',
+        message: 'Gmail account connected successfully',
+      });
+      fetchMainDashboardData(); 
+      if (isGmailConnectDialogOpen) {
+        fetchDialogGmailStatus();
+      }
+      router.replace('/student/dashboard', { scroll: false });
+    } else if (error) {
+      addToast({
+        variant: 'danger',
+        message: error || 'Failed to connect Gmail account',
+      });
+      router.replace('/student/dashboard', { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, addToast, fetchMainDashboardData, isGmailConnectDialogOpen, router, fetchDialogGmailStatus]);
 
   const handleUpgradeClick = () => {
     setIsUpgradeDialogOpen(true);
@@ -138,49 +239,6 @@ function StudentDashboardInner() {
       message: 'Disconnect functionality coming soon. Please manage connections via Google Account settings for now.',
     });
   };
-
-  const fetchDialogGmailStatus = useCallback(async () => {
-    setIsDialogGmailStatusLoading(true);
-    try {
-      const response = await fetch('/api/email/status');
-      if (!response.ok) throw new Error('Failed to fetch status');
-      const data = await response.json();
-      setIsDialogGmailConnected(data.isConnected);
-    } catch (error) {
-      console.error('Error checking Gmail status in dialog:', error);
-      addToast({
-        variant: 'danger',
-        message: 'Failed to check Gmail connection status',
-      });
-      setIsDialogGmailConnected(false);
-    } finally {
-      setIsDialogGmailStatusLoading(false);
-    }
-  }, [addToast]);
-
-  useEffect(() => {
-    const success = searchParams.get('gmail_connect_success');
-    const error = searchParams.get('gmail_connect_error');
-
-    if (success === 'true') {
-      addToast({
-        variant: 'success',
-        message: 'Gmail account connected successfully',
-      });
-      mutate();
-      if (isGmailConnectDialogOpen) {
-        fetchDialogGmailStatus();
-      }
-      router.replace('/student/dashboard', { scroll: false });
-    } else if (error) {
-      addToast({
-        variant: 'danger',
-        message: error || 'Failed to connect Gmail account',
-      });
-      router.replace('/student/dashboard', { scroll: false });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, addToast, mutate, isGmailConnectDialogOpen, router, fetchDialogGmailStatus]);
 
   const statsToDisplay = dashboardStats ? [
     { icon: "mailBulk", label: "Emails Sent", value: dashboardStats.stats.emailsSent, variant: "success" as const },
@@ -336,7 +394,7 @@ function StudentDashboardInner() {
                 
                 <Column fillWidth borderTop="neutral-medium">
                   {campaignStatus.length > 0 ? (
-                    campaignStatus.map((campaign: { id: React.Key | null | undefined; name: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; universities: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; sentEmails: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; totalEmails: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; status: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; progress: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; }, index: number) => (
+                    campaignStatus.map((campaign, index) => (
                       <Card direction="column" background="transparent" href={`/student/campaigns/${campaign.id}`} border="transparent" key={campaign.id} fillWidth>
                         <Column gap="12" padding="24">
                           <Row vertical="center" fillWidth horizontal="space-between">
@@ -406,7 +464,7 @@ function StudentDashboardInner() {
                 </Row>
                 <Column fillWidth borderTop="neutral-medium">
                   {recentActivity.length > 0 ? (
-                    recentActivity.map((activity: { id: React.Key | null | undefined; action: string; name: string; timeFormatted: string; icon: string | undefined; university: string | undefined; }, index: number) => (
+                    recentActivity.map((activity, index) => (
                       <div key={activity.id}>
                         <ActivityItem 
                           action={activity.action}

@@ -129,7 +129,8 @@ export const Header: React.FC<HeaderProps> = ({ animateOnMount = false }) => {
 
           {/* Group 2: Auth Buttons / Dashboard Button */}
           <Row vertical="center" fitWidth paddingLeft="4">
-            <SignedOut>
+          <SignedOut>
+             {/* 
                  <Row gap="8" background="surface" padding="4" radius="xs" horizontal="center" vertical="center">
               <SignInButton mode="modal" forceRedirectUrl={"/student/dashboard"}>
                 <Button 
@@ -148,11 +149,14 @@ export const Header: React.FC<HeaderProps> = ({ animateOnMount = false }) => {
                 />
               </SignUpButton>
                 </Row>
+                */}
+
+                <Button label="Join Waitlist" size="s" data-border="playful" variant="primary" href="/waitlist"/>
             </SignedOut>
             <SignedIn>
               <Button label="Dashboard" size="s" data-border="playful" variant="primary" href="/student/dashboard"/>
             </SignedIn>
-          </Row>
+          </Row> 
         </Row>
       </Row>
       <Row 

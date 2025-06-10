@@ -3,6 +3,7 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./styles.module.scss";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -49,8 +50,10 @@ import {
 import { ScrollToTop } from "@/once-ui/components/ScrollToTop";
 import { Header } from "./Header";
 import { Testimonial2 } from "./components/Testimonial";
+import router from "next/router";
 
 export default function Home() {
+  const router = useRouter();
   const { addToast } = useToast(); // Keep for potential notifications
 
   const dynamicPhrases = [
@@ -233,7 +236,7 @@ export default function Home() {
             size="l" // Changed from xl to l
             variant="primary" // Primary action color
             arrowIcon // Adds a subtle arrow
-            onClick={() => addToast({ variant: "success", message: "Get Started Clicked!"})} // Changed variant to success
+            onClick={() => router.push('/waitlist')} // Changed variant to success
           />
           </RevealFx>
           </Column>
@@ -242,18 +245,19 @@ export default function Home() {
         {/* PROBLEM / PAIN POINTS SECTION */}
         <Column fillWidth paddingX="32" paddingTop="xl" gap="24" horizontal="center" position="relative">
             <Heading as="h2" variant="display-default-l" align="center">
-            Tired of the{" "}
+            Find{" "}
             <InlineCode
               paddingX="12"
               paddingY="4"
+              marginRight="8"
               radius="xl"
               background="surface"
               border="neutral-alpha-medium"
               onBackground="neutral-strong"
             >
-              Research Grind
+              Research
             </InlineCode>
-            ?
+            Easier Than Ever
             </Heading>
           <Text align="center" onBackground="neutral-weak" marginBottom="32">
             Finding and contacting professors for research is <Text onBackground="neutral-strong" variant="body-strong-m">time-consuming </Text>and often <Text onBackground="neutral-strong" variant="body-strong-m">frustrating </Text>.
@@ -435,10 +439,10 @@ export default function Home() {
           </Text>
           <Button
             id="getStartedCTA"
-            label="Sign Up for Free"
+            label="Join Waitlist"
             size="l"
             variant="primary"
-            onClick={() => addToast({ variant: "success", message: "Sign Up Clicked!"})}
+            onClick={() => router.push('/waitlist')}
           />
         </Column>
       </Column>
