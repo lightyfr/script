@@ -18,6 +18,7 @@ import {
 } from '@/once-ui/components';
 import { Header } from '../Header';
 import { createClient } from '@supabase/supabase-js';
+import { Testimonial2 } from '../components/Testimonial';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -120,7 +121,6 @@ export default function WaitlistPage() {
       
       <Column align="center" marginTop='l' horizontal='center' paddingY="xl" paddingX="m" gap="xl">
         
-        <RevealFx delay={0.2}>
           <Column gap="l">
           <Heading paddingTop='l' variant='display-default-l' align="center">
             Be the first to know when we launch
@@ -129,7 +129,6 @@ export default function WaitlistPage() {
             We're working hard to bring you an amazing experience. Join our waitlist to get early access and exclusive updates.
           </Text>
           </Column>
-        </RevealFx>
         
         
         {!isSubmitted && (
@@ -140,15 +139,14 @@ export default function WaitlistPage() {
             border='neutral-weak'
             horizontal='center'
             shadow="m"
-            width="m"
-            fillWidth
+            maxWidth="m"
             radius="l"
           >
             <form onSubmit={handleSubmit}>
-              <Column gap="m" fillWidth>
-                <Row gap="m" fillWidth vertical='center' mobileDirection='column'>
+              <Column gap="m">
+                <Row gap="m" vertical='center' mobileDirection='column'>
                   <Input
-                  size={49}
+                  size={29}
                   type="email"
                   label="Email Address"
                   value={email}
@@ -194,6 +192,10 @@ export default function WaitlistPage() {
             </Column>
           </Fade>
         )}
+        <Column fillWidth horizontal='start' align='start'>
+        <Testimonial2 title="Opportunities started piling up" content="Script sent thousands of personalized emails to real proffessors for me, I literally only had to click a few buttons"
+              name="Adhitya Nadooli" role="Student " link="adhityanadooli.vercel.app" src="/images/dash.png" avatar="/images/adhi.JPG"/>
+        </Column>
         
         <RevealFx delay={0.6}>
           <Flex gap="m">
