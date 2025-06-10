@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher([
   '/', 
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/waitlist',
   // '/onboarding/select-role', // No longer unconditionally public if we redirect away when onboarded
   '/api/clerk-webhook' 
 ]);
