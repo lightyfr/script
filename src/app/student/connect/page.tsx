@@ -77,7 +77,7 @@ export default function ConnectPage() {
             </Text>
           </Column>
           {isLinkedInConnected ? (
-            <Badge label="Connected" variant="success" />
+            <Badge/>
           ) : (
             <Button
               label="Connect LinkedIn"
