@@ -3,7 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const geminiApiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
+const geminiApiKey = Deno.env.get("GEMINI_API_KEY2") ?? "";
+const geminiApiKey2 = Deno.env.get("GEMINI_API_KEY3") ?? "";
+const geminiApiKey3 = Deno.env.get("GEMINI_API_KEY4") ?? "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -68,7 +70,13 @@ async function fetchFileAsArrayBuffer(url: string): Promise<ArrayBuffer> {
   return await res.arrayBuffer();
 }
 
-// Helper to base64 encode an ArrayBuffer
+// Helper to base64 encode a UTF-8 string (for text data)
+function utf8ToBase64(str: string): string {
+  // Encode a JS string as base64, handling Unicode properly
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+// Helper to base64 encode an ArrayBuffer (for binary data)
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   let binary = '';
   const bytes = new Uint8Array(buffer);
@@ -114,33 +122,96 @@ async function uploadPdfToGeminiFileApi(pdfBuffer: ArrayBuffer, displayName: str
 }
 
 async function generatePersonalizedEmailWithResume(
-  template: string,
   professor: Professor,
   resumeUrl: string | null,
   geminiApiKey: string,
   supabase: any,
-  studentInfo: { name: string; email: string; phone?: string | null }
+  studentInfo: { name: string; email: string }
 ): Promise<string> {
   // Compose a prompt for Gemini to write a fully personalized, natural email
-  let promptText = `You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor.\n\nStudent Information:\n- Name: ${studentInfo.name}\n- Email: ${studentInfo.email}${studentInfo.phone ? `\n- Phone: ${studentInfo.phone}` : ''}\n\nProfessor's Information:\n- Name: ${professor.name}\n- University: ${professor.university}\n- Department: ${professor.department}\n- Research Areas: ${professor.researchAreas.join(", ")}\n\nThe student's resume is provided below. Use the resume to extract and include specific, relevant skills, projects, and experiences.\n\nWrite the email as if the student is writing it themselves, in a natural, engaging, and professional tone.\n\nStrict requirements:\n- Do NOT leave any template language, placeholders, or instructions in the email.\n- Fill in every field with real, specific details from the resume and the professor's research.\n- Mention a specific publication, project, or research area of the professor if possible.\n- Summarize 1-2 relevant skills and 1-2 relevant projects or experiences from the student's resume.\n- The email must be ready to send as-is, with all details filled in.\n- Do NOT include any commentary, instructions, or formatting outside the email body.\n- End with the student's real name and contact information in the signature.\n`;
+  let promptText = `
+  You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor.
+  
+  Student Information:
+  - Name: ${studentInfo.name}
+  - Email: ${studentInfo.email}
+  
+  Professor's Information:
+  - Name: ${professor.name}
+  - University: ${professor.university}
+  - Department: ${professor.department}
+  - Research Areas: ${professor.researchAreas.join(", ")}
+  
+  The student's resume is provided below. Use the resume to extract and include specific, relevant skills, projects, and experiences.
+  
+  Write the email as if the student is writing it themselves, in a natural, engaging, and professional tone.
+  
+  Strict requirements:
+  - Email needs to be short and concise, clearly label the ask and what the student can offer, offer data analysis help and show your not dead weight.
+  - Do NOT leave any template language, placeholders, or instructions in the email.
+  - Fill in every field with real, specific details from the resume and the professor's research.
+  - Use clean whitespace and bullet points where appropriate.
+  - Researchers are busy, so make your email short and to the point.
+  - Mention a specific publication, project, or research area of the professor if possible.
+  - Summarize 1-2 relevant skills and 1-2 relevant projects or experiences from the student's resume.
+  - The email must be ready to send as-is, with all details filled in (no placeholders).
+  - Do NOT include any commentary, instructions, or formatting outside the email body.
+  - End with the student's real name and contact information in the signature.
+  `;
   if (!resumeUrl) {
     // fallback to text-only prompt
+    console.log('DEBUG: no resumeUrl, using text-only prompt');
     const email = await callGemini(promptText);
     return postProcessStudentPlaceholders(email, studentInfo);
   }
   // Ensure resumeUrl is public or signed
   const publicResumeUrl = await getPublicResumeUrl(supabase, resumeUrl);
+  console.log('DEBUG: resumeUrl:', resumeUrl);
+  console.log('DEBUG: publicResumeUrl:', publicResumeUrl);
   // Detect content type
   const headRes = await fetch(publicResumeUrl, { method: "HEAD" });
   const contentType = headRes.headers.get("content-type") || "";
-  if (contentType.startsWith("text/plain")) {
+  console.log('DEBUG: contentType:', contentType);
+  if (contentType.toLowerCase().startsWith("text/plain")) {
     // Fetch as text and include in prompt
     const textRes = await fetch(publicResumeUrl);
+    console.log('DEBUG: textRes status:', textRes.status);
     if (!textRes.ok) throw new Error(`Failed to fetch text resume: ${textRes.status} ${textRes.statusText}`);
     const resumeText = await textRes.text();
-    const textPrompt = `${promptText}\n\n---\n\nStudent Resume (plain text):\n${resumeText}\n\n---\n`;
-    const email = await callGemini(textPrompt);
-    return postProcessStudentPlaceholders(email, studentInfo);
+    console.log('DEBUG: resumeText preview:', resumeText.slice(0, 200));
+    if (contentType.toLowerCase().includes("charset=utf-8")) {
+      // If resume is UTF-8, base64 encode and send as inline_data
+      const base64Text = utf8ToBase64(resumeText);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+      const body = {
+        systemInstruction: "You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor. You are given a student's resume and a professor's information. You need to write a personalized email to the professor based on the student's resume and the professor's information. NO PLACEHOLDERS ALLOWED.",
+        contents: [
+          {
+            parts: [
+              { inline_data: { mime_type: "text/plain", data: base64Text } },
+              { text: promptText }
+            ]
+          }
+        ]
+      };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Gemini API error (text inline): ${res.status} ${res.statusText} - ${errorText}`);
+      }
+      const data = await res.json();
+      const email = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      return postProcessStudentPlaceholders(email, studentInfo);
+    } else {
+      // Otherwise, send as plain text in the prompt
+      const textPrompt = `${promptText}\n\n---\n\nStudent Resume (plain text):\n${resumeText}\n\n---\n`;
+      const email = await callGemini(textPrompt);
+      return postProcessStudentPlaceholders(email, studentInfo);
+    }
   }
   // Download the PDF (default/fallback)
   const pdfBuffer = await fetchFileAsArrayBuffer(publicResumeUrl);
@@ -149,6 +220,7 @@ async function generatePersonalizedEmailWithResume(
     const base64Pdf = arrayBufferToBase64(pdfBuffer);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
     const body = {
+      systemInstruction: "You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor. You are given a student's resume and a professor's information. You need to write a personalized email to the professor based on the student's resume and the professor's information. NO PLACEHOLDERS ALLOWED.",
       contents: [
         {
           parts: [
@@ -175,6 +247,7 @@ async function generatePersonalizedEmailWithResume(
     const fileUri = await uploadPdfToGeminiFileApi(pdfBuffer, "student_resume.pdf", geminiApiKey);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
     const body = {
+      systemInstruction: "You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor. You are given a student's resume and a professor's information. You need to write a personalized email to the professor based on the student's resume and the professor's information. NO PLACEHOLDERS ALLOWED.",
       contents: [
         {
           parts: [
@@ -316,7 +389,7 @@ serve(async (_req: Request) => {
     }
     // Track unique campaign_ids processed in this batch
     const processedCampaignIds = new Set<string>();
-    for (const emailJob of pendingEmails) {
+    for (const [i, emailJob] of pendingEmails.entries()) {
       processedCampaignIds.add(emailJob.campaign_id);
       try {
         // Get campaign and student info
@@ -327,7 +400,7 @@ serve(async (_req: Request) => {
           .single();
         const { data: studentProfile } = await supabase
           .from("student_profiles")
-          .select("resume_url, phone")
+          .select("resume_url")
           .eq("user_id", campaign.user_id)
           .single();
         const { data: userInfo } = await supabase
@@ -347,9 +420,11 @@ serve(async (_req: Request) => {
         const studentPhone = studentProfile?.phone || null;
         // Get a valid Gmail access token (refresh if needed)
         const accessToken = await getValidGmailAccessToken(supabase, campaign.user_id);
+        // Alternate API keys
+        const apiKeys = [geminiApiKey, geminiApiKey2, geminiApiKey3];
+        const apiKeyToUse = apiKeys[i % 3];
         // Generate personalized email
         const personalizedEmail = await generatePersonalizedEmailWithResume(
-          campaign.email_template,
           {
             name: emailJob.professor_name,
             email: emailJob.professor_email,
@@ -358,15 +433,15 @@ serve(async (_req: Request) => {
             researchAreas: emailJob.research_areas,
           },
           studentProfile?.resume_url || null,
-          geminiApiKey,
+          apiKeyToUse,
           supabase,
-          { name: studentName, email: studentEmail, phone: studentPhone }
+          { name: studentName, email: studentEmail }
         );
         // Send email
         await sendEmail(
           accessToken,
           emailJob.professor_email,
-          `Research Interest: ${emailJob.research_areas?.[0] || "Research"}`,
+          `Research Opportunity Inquiry - ${emailJob.research_areas?.[0] || "Research"}`,
           personalizedEmail
         );
         // Mark as sent
