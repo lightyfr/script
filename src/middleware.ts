@@ -18,6 +18,7 @@ const isIgnoredRoute = createRouteMatcher(['/_next(.*)', '/favicon.ico', '/stati
 
 const isOnboardingRoute = createRouteMatcher([
   '/onboarding/select-role',
+  '/onboarding/student-profile',
   '/onboarding/professor-profile'
 ]);
 
@@ -25,6 +26,7 @@ const isOnboardingRoute = createRouteMatcher([
 const isProtectedRoute = (pathname: string) => {
   return [
     '/student/dashboard',
+    '/student/campaigns',
     '/articles',
     '/projects',
     '/careers'
@@ -92,12 +94,13 @@ export default clerkMiddleware(async (auth: ClerkMiddlewareAuth, request: NextRe
   );
 
   let userProfile;
+  let studentProfile;
   let profileError;
 
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('id, role')
+      .select('id, role, firstName, lastName, school')
       .eq('id', userId)
       .single();
     userProfile = data;
@@ -114,13 +117,75 @@ export default clerkMiddleware(async (auth: ClerkMiddlewareAuth, request: NextRe
 
   const userHasRole = userProfile && userProfile.role;
 
+  // If user has a student role, also check their student profile completion
+  if (userHasRole && userProfile?.role === 'student') {
+    try {
+      const { data: studentData, error: studentError } = await supabase
+        .from('student_profiles')
+        .select('interests, resume_url')
+        .eq('user_id', userId)
+        .single();
+      studentProfile = studentData;
+
+      if (studentError && studentError.code !== 'PGRST116') {
+        console.error('Middleware: Error fetching student profile:', studentError);
+      }
+    } catch (e) {
+      console.error('Middleware: Exception querying student profile:', e);
+    }
+  }
+
   if (isOnboardingRoute(request)) {
-    if (userHasRole) {
-      // User is authenticated, has a role, but trying to access an onboarding page.
-      // Redirect them to their dashboard.
-      // userProfile is guaranteed to be non-null here because userHasRole is true.
-      const dashboardUrl = userProfile!.role === 'student' ? '/student/dashboard' : '/professor/dashboard';
-      return NextResponse.redirect(new URL(dashboardUrl, request.url));
+    if (userHasRole && userProfile) {
+      // Check if this is a student with incomplete profile trying to access select-role
+      if (userProfile.role === 'student' && pathname === '/onboarding/select-role') {
+        // Student already has role, check if profile is complete
+        const isProfileComplete = userProfile.firstName && 
+                                 userProfile.lastName && 
+                                 userProfile.school && 
+                                 studentProfile?.interests && 
+                                 studentProfile.interests.length > 0;
+        
+        if (isProfileComplete) {
+          // Profile is complete, redirect to dashboard
+          return NextResponse.redirect(new URL('/student/dashboard', request.url));
+        } else {
+          // Profile is incomplete, redirect to profile completion
+          return NextResponse.redirect(new URL('/onboarding/student-profile', request.url));
+        }
+      }
+      
+      // Check if this is a student with complete profile trying to access student-profile
+      if (userProfile.role === 'student' && pathname === '/onboarding/student-profile') {
+        const isProfileComplete = userProfile.firstName && 
+                                 userProfile.lastName && 
+                                 userProfile.school && 
+                                 studentProfile?.interests && 
+                                 studentProfile.interests.length > 0;
+        
+        if (isProfileComplete) {
+          // Profile is complete, redirect to dashboard
+          return NextResponse.redirect(new URL('/student/dashboard', request.url));
+        }
+        // Profile is incomplete, allow access to complete it
+        return NextResponse.next();
+      }
+      
+      // For other onboarding routes with completed profiles, redirect to dashboard
+      if (userProfile.role === 'student') {
+        const isProfileComplete = userProfile.firstName && 
+                                 userProfile.lastName && 
+                                 userProfile.school && 
+                                 studentProfile?.interests && 
+                                 studentProfile.interests.length > 0;
+        
+        if (isProfileComplete) {
+          return NextResponse.redirect(new URL('/student/dashboard', request.url));
+        }
+      } else if (userProfile.role === 'professor') {
+        // For professors, redirect to their dashboard (TODO: add professor profile completion check)
+        return NextResponse.redirect(new URL('/professor/dashboard', request.url));
+      }
     }
     // User is on an onboarding route and does NOT have a role yet (or no profile), so allow access.
     return NextResponse.next();
@@ -133,8 +198,20 @@ export default clerkMiddleware(async (auth: ClerkMiddlewareAuth, request: NextRe
     return NextResponse.redirect(selectRoleUrl);
   }
   
-  // TODO: Add further checks if student/professor profile details are incomplete
-  // and redirect to /onboarding/student-profile or /onboarding/professor-profile if necessary.
+  // Check if student has incomplete profile and redirect to profile completion
+  if (userProfile && userProfile.role === 'student') {
+    const isProfileComplete = userProfile.firstName && 
+                             userProfile.lastName && 
+                             userProfile.school && 
+                             studentProfile?.interests && 
+                             studentProfile.interests.length > 0;
+    
+    if (!isProfileComplete) {
+      // Profile is incomplete, redirect to profile completion
+      const studentProfileUrl = new URL('/onboarding/student-profile', request.url);
+      return NextResponse.redirect(studentProfileUrl);
+    }
+  }
 
   // All checks passed, user is authenticated, has a role, and is on a protected page they should access.
   return NextResponse.next();
