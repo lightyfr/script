@@ -34,7 +34,9 @@ const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
       }
     };
 
-    const handleRemoveTag = (index: number) => {
+    const handleRemoveTag = (index: number) => (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
       const newValue = value.filter((_, i) => i !== index);
       onChange(newValue);
     };
@@ -78,7 +80,7 @@ const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
               <Chip
                 key={index}
                 label={tag}
-                onRemove={() => handleRemoveTag(index)}
+                onRemove={handleRemoveTag(index)}
                 aria-label={`Remove tag ${tag}`}
               />
             ))}

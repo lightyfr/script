@@ -10,7 +10,7 @@ interface ChipProps extends React.ComponentProps<typeof Flex> {
   label: string;
   selected?: boolean;
   prefixIcon?: IconName;
-  onRemove?: () => void;
+  onRemove?: (e: React.MouseEvent) => void;
   onClick?: MouseEventHandler<HTMLDivElement>;
   children?: ReactNode;
   iconButtonProps?: Partial<IconButtonProps>;
@@ -37,9 +37,9 @@ const Chip: React.FC<ChipProps> = forwardRef<HTMLDivElement, ChipProps>(
       variant: "ghost",
       size: "s",
       tooltip: "Remove",
-      onClick: (e) => {
+      onClick: (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (onRemove) onRemove();
+        if (onRemove) onRemove(e);
       },
     };
 
