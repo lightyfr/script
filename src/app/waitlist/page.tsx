@@ -119,7 +119,7 @@ export default function WaitlistPage() {
     <Column gap="xl" horizontal='center' align="center">
       <Header />
       
-      <Column align="center" marginTop='l' horizontal='center' paddingY="xl" paddingX="m" gap="xl">
+      <Column align="center" marginTop='xl' horizontal='center' paddingY="xl" paddingX="m" gap="xl">
         
           <Column gap="l">
           <Heading paddingTop='l' variant='display-default-l' align="center">
