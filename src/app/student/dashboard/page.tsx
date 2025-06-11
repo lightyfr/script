@@ -56,7 +56,6 @@ function StudentDashboardInner() {
     stats: { 
       emailsSent: number;
       applications: number;
-      offers: number | null;
       responses: number;
       responseRate: number;
       openRate: number;
@@ -69,7 +68,6 @@ function StudentDashboardInner() {
     stats: {
       emailsSent: 0,
       applications: 0,
-      offers: 0,
       responses: 0,
       responseRate: 0,
       openRate: 0,
@@ -122,12 +120,11 @@ function StudentDashboardInner() {
           stats: {
             emailsSent: statsData.stats.emailsSent,
             applications: statsData.stats.applications,
-            offers: statsData.stats.offers,
             responses: statsData.stats.responses,
             responseRate: statsData.stats.responseRate,
-            openRate: statsData.stats.openRate || 0,
-            totalOpens: statsData.stats.totalOpens || 0,
-            totalTrackedEmails: statsData.stats.totalTrackedEmails || 0,
+            openRate: statsData.stats.openRate,
+            totalOpens: statsData.stats.totalOpens,
+            totalTrackedEmails: statsData.stats.totalTrackedEmails,
             totalCampaigns: statsData.stats.totalCampaigns
           },
           monthlyChartData: statsData.monthlyChartData
@@ -149,7 +146,6 @@ function StudentDashboardInner() {
         stats: { 
           emailsSent: 0,
           applications: 0,
-          offers: 0,
           responses: 0,
           responseRate: 0,
           openRate: 0,
@@ -292,8 +288,8 @@ function StudentDashboardInner() {
     },
     { 
       icon: "sparkles" as const, 
-      label: "Offers", 
-      value: dashboardStats?.stats?.offers ?? 0, 
+      label: "Response Rate", 
+      value: `${dashboardStats?.stats?.responseRate ?? 0}%`, 
       variant: "success" as const 
     },
   ];
