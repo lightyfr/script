@@ -40,17 +40,11 @@ export async function getStudentDashboardStats() {
     .eq('user_id', userId);
 
   if (userCampaignsError || !userCampaigns || userCampaigns.length === 0) {
-    const { count: offers = 0 } = await supabase
-      .from('connections')
-      .select('id', { count: 'exact', head: true })
-      .eq('student_id', userId)
-      .eq('status', 'accepted');
 
     return {
       stats: {
         emailsSent: 0,
         applications: 0,
-        offers: offers || 0,
         responses: 0,
         responseRate: 0,
         openRate: 0,
@@ -63,52 +57,63 @@ export async function getStudentDashboardStats() {
   }
 
   const campaignIds = userCampaigns.map(c => c.id);
-  const totalCampaigns = campaignIds.length;
 
   // Run all the queries concurrently
   const [
     { count: emailsSent = 0 },
-    { count: offers = 0 },
+    { data: emailLogs = [] },
     { count: repliedEmails = 0 },
     { data: monthlyActivityData = [] },
-    { data: emailLogs = [] }
+    { data: allEmailLogs = [] }
   ] = await Promise.all([
+    // Count of all sent emails
     supabase
       .from('pending_emails')
       .select('id', { count: 'exact', head: true })
+      .eq('status', 'sent')
       .in('campaign_id', campaignIds),
+      
+    // Get all email logs to calculate open count
     supabase
-      .from('connections')
-      .select('id', { count: 'exact', head: true })
-      .eq('student_id', userId)
-      .eq('status', 'accepted'),
+      .from('email_logs')
+      .select('open_count, status, campaign_id')
+      .in('campaign_id', campaignIds),
+      
+    // Count of replied emails (from email_logs where status is 'replied')
     supabase
-      .from('pending_emails')
+      .from('email_logs')
       .select('id', { count: 'exact', head: true })
       .in('campaign_id', campaignIds)
       .eq('status', 'replied'),
+      
+    // Get monthly activity data
     supabase
       .from('pending_emails')
       .select('created_at, status')
       .in('campaign_id', campaignIds)
       .gte('created_at', new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString()),
+      
+    // Get all email logs for tracking
     supabase
       .from('email_logs')
-      .select('id, open_count, campaign_id')
+      .select('id, open_count, campaign_id, status')
       .in('campaign_id', campaignIds),
   ]);
+  
+  // Calculate total opens by summing up all open_counts
+  const totalOpens = (emailLogs || []).reduce((sum, log) => sum + (log.open_count || 0), 0);
+  const totalTrackedEmails = (allEmailLogs || []).length;
 
   const responseRate = (emailsSent ?? 0) > 0 ? ((repliedEmails ?? 0) / (emailsSent ?? 0)) * 100 : 0;
-  
-  const totalOpens = emailLogs?.reduce((sum, log) => sum + (log.open_count || 0), 0) || 0;
-  const totalTrackedEmails = emailLogs?.length || 0;
   const openRate = totalTrackedEmails > 0 ? (totalOpens / totalTrackedEmails) * 100 : 0;
 
+  console.log("emailLogs", emailLogs);
+  console.log("totalOpens", totalOpens);
+  console.log("repliedEmails", repliedEmails);
   return {
     stats: {
       emailsSent: emailsSent || 0,
       applications: 0,
-      offers: offers || 0,
       responses: repliedEmails || 0,
       responseRate: parseFloat(responseRate.toFixed(1)),
       openRate: parseFloat(openRate.toFixed(1)),
@@ -256,7 +261,7 @@ export async function getCampaignStatus() {
         .not('sent_at', 'is', null);
 
       const { count: repliedEmails } = await supabase
-        .from('pending_emails')
+        .from('email_logs')
         .select('id', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id)
         .eq('status', 'replied');
