@@ -118,8 +118,18 @@ async function findProfessorsWithOpenAlex(interests: string[], universities: str
 async function findProfessorsWithGemini(interests: string[], universities: string[] = [], max_emails: number): Promise<any[]> {
   const interestsStr = interests.join(", ");
   const universitiesStr = universities.length > 0 ? ` at ${universities.join(", ")}` : "";
-  const prompt = `Find professors who research ${interestsStr}${universitiesStr}. For each professor, provide:\n1. Full name\n2. Email address\n3. University\n4. Department\n5. Research areas\n\nFormat the response as a JSON array of objects with these fields:\n{\n  \"name\": \"Professor's full name\",\n  \"email\": \"professor@university.edu\",\n  \"university\": \"University name\",\n  \"department\": \"Department name\",\n  \"researchAreas\": [\"Area 1\", \"Area 2\", ...]\n}\n\nOnly include professors whose email addresses are publicly available on their university website or department page.\n\nIMPORTANT: Output ONLY the JSON array. Do NOT include any explanation, commentary, or text before or after the JSON. Do not say anything else. Create a list of ${max_emails} professors. Do not leave any fields null. `;
-  const response = await callGemini(prompt);
+  const prompt = `Find ${max_emails} professors who research ${interestsStr}${universitiesStr}.
+  For each professor, provide:
+  - Full name
+  - Email address (must be publicly available on their university website or department page)
+  - University
+  - Department
+  - Research areas (3-5 key areas)
+  
+  Write it in a JSON array with these fields:\n{\n  \"name\": \"Professor's full name\",\n  \"email\": \"professor@university.edu\",\n  \"university\": \"University name\",\n  \"department\": \"Department name\",\n  \"researchAreas\": [\"Area 1\", \"Area 2\", ...]\n}\n\n
+  IMPORTANT: Output ONLY the JSON array. Do NOT include any explanation, commentary, or text before or after the JSON. Do not say anything else Do not leave any fields null. If you don't know the email address of a professor, dont include that professor in the list. Dont hallucinate and make up professors
+  Only include professors with valid email addresses. If a professor's email is not publicly available, do not include them in the results.`;
+     const response = await callGemini(prompt);
   let jsonStr: string;
   try {
     jsonStr = extractJsonArray(response);
@@ -156,17 +166,39 @@ serve(async (req: Request) => {
     console.log(`[enqueue-campaign-emails] Campaign loaded:`, campaign);
     // Find professors (OpenAlex first, fallback to Gemini)
     let professors = [];
+    try {
+      console.log('[enqueue-campaign-emails] Trying to find professors with OpenAlex...');
       professors = await findProfessorsWithOpenAlex(
         campaign.research_interests,
         campaign.target_universities,
         campaign.max_emails
       );
-      console.log('[OpenAlex] Found API professors:', professors);
+      console.log('[enqueue-campaign-emails] Professors found with OpenAlex:', professors);
+      
+      // If no professors found with OpenAlex, try Gemini
       if (!professors || professors.length === 0) {
-        console.warn('[OpenAlex] No professors found with OpenAlex');
-        throw new Error('No professors found with OpenAlex');
+        console.log('[enqueue-campaign-emails] No professors found with OpenAlex, trying Gemini...');
+        professors = await findProfessorsWithGemini(
+          campaign.research_interests,
+          campaign.target_universities,
+          campaign.max_emails
+        );
+        console.log('[enqueue-campaign-emails] Professors found with Gemini:', professors);
       }
-      console.log(`[enqueue-campaign-emails] Professors found (OpenAlex):`, professors);
+    } catch (e) {
+      console.error('[enqueue-campaign-emails] OpenAlex search failed, falling back to Gemini:', e);
+      professors = await findProfessorsWithGemini(
+        campaign.research_interests,
+        campaign.target_universities,
+        campaign.max_emails
+      );
+      console.log('[enqueue-campaign-emails] Professors found with Gemini:', professors);
+    }
+    
+    if (!professors || professors.length === 0) {
+      throw new Error('No professors found with either OpenAlex or Gemini');
+    }
+    console.log(`[enqueue-campaign-emails] Found ${professors.length} professors to process`);
 
     // Prevent duplicate outreach: get all professor emails already contacted by this user in their campaigns
     const { data: userCampaigns, error: userCampaignsError } = await supabase

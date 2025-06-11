@@ -8,31 +8,6 @@ import { ChartCard } from "@/app/components/chartCard";
 import { PricingTable, useAuth } from "@clerk/nextjs";
 import { getStudentName, getStudentDashboardStats, hasUserGmailToken, getCampaignStatus, getRecentActivity, getConnectionStats } from "./actions";
 
-interface StatCardProps {
-  title: string;
-  value: string;
-  change: string;
-  positive?: boolean;
-  href?: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ title, value, change, positive = true, href }) => (
-  <Card minWidth={12} href={href} padding="24" radius="l" fillWidth direction="column">
-    <Row vertical="center" gap="16" marginBottom="16">
-      <Text variant="label-default-s" onBackground="neutral-medium">{title}</Text>
-      <Tag
-        size="s"
-        variant={positive ? "success" : "danger"}
-        prefixIcon={positive ? "trending-up" : "trending-down"}
-      >
-        {change}
-      </Tag>
-    </Row>
-    <Heading variant="display-strong-s">
-      {value}
-    </Heading>
-  </Card>
-);
 
 interface ActivityItemProps {
   action: string;
@@ -78,9 +53,36 @@ function StudentDashboardInner() {
   const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
   const [showGmailFeedback, setShowGmailFeedback] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<{
-    stats: { emailsSent: number; applications: number; offers: number; responseRate: number };
+    stats: { 
+      emailsSent: number;
+      applications: number;
+      offers: number | null;
+      responses: number;
+      responseRate: number;
+      openRate: number;
+      totalOpens: number;
+      totalTrackedEmails: number;
+      totalCampaigns: number;
+    };
     monthlyChartData: Array<{ name: string; activity: number; responseRate: number }>;
-  } | null>(null);
+  } | null>({
+    stats: {
+      emailsSent: 0,
+      applications: 0,
+      offers: 0,
+      responses: 0,
+      responseRate: 0,
+      openRate: 0,
+      totalOpens: 0,
+      totalTrackedEmails: 0,
+      totalCampaigns: 0
+    },
+    monthlyChartData: [
+      { name: "Jan", activity: 0, responseRate: 0 },
+      { name: "Feb", activity: 0, responseRate: 0 },
+      { name: "Mar", activity: 0, responseRate: 0 },
+    ]
+  });
   const [connectionStats, setConnectionStats] = useState<{
     monthlyConnectionData: Array<{ name: string; activity: number; responseRate: number }>;
   } | null>(null);
@@ -115,7 +117,22 @@ function StudentDashboardInner() {
       const name = await getStudentName();
       setUserName(name);
       const statsData = await getStudentDashboardStats();
-      setDashboardStats(statsData);
+      if (statsData) {
+        setDashboardStats({
+          stats: {
+            emailsSent: statsData.stats.emailsSent,
+            applications: statsData.stats.applications,
+            offers: statsData.stats.offers,
+            responses: statsData.stats.responses,
+            responseRate: statsData.stats.responseRate,
+            openRate: statsData.stats.openRate || 0,
+            totalOpens: statsData.stats.totalOpens || 0,
+            totalTrackedEmails: statsData.stats.totalTrackedEmails || 0,
+            totalCampaigns: statsData.stats.totalCampaigns
+          },
+          monthlyChartData: statsData.monthlyChartData
+        });
+      }
       const campaigns = await getCampaignStatus();
       setCampaignStatus(campaigns);
       const activities = await getRecentActivity();
@@ -127,14 +144,26 @@ function StudentDashboardInner() {
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setUserName('Student'); 
-      setDashboardStats({
-        stats: { emailsSent: 0, applications: 0, offers: 0, responseRate: 0 },
+      setDashboardStats(prev => ({
+        ...prev,
+        stats: { 
+          emailsSent: 0,
+          applications: 0,
+          offers: 0,
+          responses: 0,
+          responseRate: 0,
+          openRate: 0,
+          totalOpens: 0,
+          totalTrackedEmails: 0,
+          totalCampaigns: 0,
+          ...(prev?.stats || {})
+        },
         monthlyChartData: [
           { name: "Jan", activity: 0, responseRate: 0 },
           { name: "Feb", activity: 0, responseRate: 0 },
           { name: "Mar", activity: 0, responseRate: 0 },
         ],
-      });
+      }));
       setConnectionStats({
         monthlyConnectionData: [
           { name: "Jan", activity: 0, responseRate: 0 },
@@ -240,15 +269,33 @@ function StudentDashboardInner() {
     });
   };
 
-  const statsToDisplay = dashboardStats ? [
-    { icon: "mailBulk", label: "Emails Sent", value: dashboardStats.stats.emailsSent, variant: "success" as const },
-    { icon: "user", label: "Applications", value: dashboardStats.stats.applications, variant: "success" as const},
-    { icon: "sparkles", label: "Offers", value: dashboardStats.stats.offers, variant: "info" as const },
-    { icon: "activity", label: "Response Rate", value: `${dashboardStats.stats.responseRate}%`, variant: "warning" as const },
-  ] : [
-    { icon: "mailBulk", label: "Emails Sent", value: 0, variant: "success" as const },
-    { icon: "sparkles", label: "Offers", value: 0, variant: "info" as const },
-    { icon: "activity", label: "Response Rate", value: "0%", variant: "warning" as const },
+  const statsToDisplay = [
+    { 
+      icon: "mailBulk" as const, 
+      label: "Emails Sent", 
+      value: dashboardStats?.stats?.emailsSent ?? 0, 
+      variant: "success" as const,
+    },
+    { 
+      icon: "eye" as const, 
+      label: "Opens", 
+      value: dashboardStats?.stats?.totalOpens ?? 0, 
+      variant: "info" as const,
+      change: `${(dashboardStats?.stats?.openRate ?? 0).toFixed(1)}% open rate`
+    },
+    { 
+      icon: "messageSquare" as const, 
+      label: "Email Responses", 
+      value: dashboardStats?.stats?.responses ?? 0, 
+      variant: "info" as const,
+      change: `${(dashboardStats?.stats?.responseRate ?? 0).toFixed(1)}% response rate`
+    },
+    { 
+      icon: "sparkles" as const, 
+      label: "Offers", 
+      value: dashboardStats?.stats?.offers ?? 0, 
+      variant: "success" as const 
+    },
   ];
 
   return (
@@ -337,6 +384,8 @@ function StudentDashboardInner() {
             variant={stat.variant}
             icon="chevronRight"
             label={stat.label}
+            subtitle={stat.subtitle}
+            change={stat.change}
             value={stat.value}
           />
         ))}
@@ -408,8 +457,7 @@ function StudentDashboardInner() {
                             </Column>
                             <Tag variant={
                               campaign.status === 'Completed' ? 'success' : 
-                              campaign.status === 'Paused' ? 'warning' : 
-                              campaign.status === 'Nearly Done' ? 'info' : 'neutral'
+                              campaign.status === 'In Progress' ? 'info' : 'warning'
                             }>
                               {campaign.status}
                             </Tag>
@@ -428,7 +476,7 @@ function StudentDashboardInner() {
                               <div style={{ 
                                 width: `${campaign.progress}%`, 
                                 height: '100%', 
-                                backgroundColor: campaign.status === 'Completed' ? 'var(--brand-on-brand-weak)' : 'var(--accent-medium)',
+                                backgroundColor: campaign.status === 'Completed' ? 'var(--success-alpha-medium)' : 'var(--background-info-medium)',
                                 transition: 'width 0.3s ease'
                               }} />
                             </div>

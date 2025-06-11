@@ -104,6 +104,7 @@ export type Database = {
           created_at: string
           id: string
           open_count: number | null
+          pending_email_id: string | null
           sent_at: string
           status: Database["public"]["Enums"]["email_status"] | null
           student_id: string
@@ -115,6 +116,7 @@ export type Database = {
           created_at?: string
           id?: string
           open_count?: number | null
+          pending_email_id?: string | null
           sent_at?: string
           status?: Database["public"]["Enums"]["email_status"] | null
           student_id: string
@@ -126,6 +128,7 @@ export type Database = {
           created_at?: string
           id?: string
           open_count?: number | null
+          pending_email_id?: string | null
           sent_at?: string
           status?: Database["public"]["Enums"]["email_status"] | null
           student_id?: string
@@ -138,6 +141,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_pending_email_id_fkey"
+            columns: ["pending_email_id"]
+            isOneToOne: false
+            referencedRelation: "pending_emails"
             referencedColumns: ["id"]
           },
           {
@@ -380,6 +390,24 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -389,7 +417,13 @@ export type Database = {
     }
     Enums: {
       connection_status: "pending" | "accepted" | "rejected"
-      email_status: "sent" | "delivered" | "opened" | "replied" | "bounced"
+      email_status:
+        | "sent"
+        | "delivered"
+        | "opened"
+        | "replied"
+        | "bounced"
+        | "legacy"
       user_role: "student" | "professor"
     }
     CompositeTypes: {
@@ -507,7 +541,14 @@ export const Constants = {
   public: {
     Enums: {
       connection_status: ["pending", "accepted", "rejected"],
-      email_status: ["sent", "delivered", "opened", "replied", "bounced"],
+      email_status: [
+        "sent",
+        "delivered",
+        "opened",
+        "replied",
+        "bounced",
+        "legacy",
+      ],
       user_role: ["student", "professor"],
     },
   },

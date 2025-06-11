@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -156,7 +157,11 @@ async function generatePersonalizedEmailWithResume(
   - Summarize 1-2 relevant skills and 1-2 relevant projects or experiences from the student's resume.
   - The email must be ready to send as-is, with all details filled in (no placeholders).
   - Do NOT include any commentary, instructions, or formatting outside the email body.
+  - Do NOT include any phrases insinuating you are a generated response like "Okay here is your response" or "Here is your email"
   - End with the student's real name and contact information in the signature.
+  - Markdown is not supported
+  - Do NOT include a subject line in your response
+  - Must not contain characters outside of the Latin1 range.
   `;
   if (!resumeUrl) {
     // fallback to text-only prompt
@@ -184,7 +189,6 @@ async function generatePersonalizedEmailWithResume(
       const base64Text = utf8ToBase64(resumeText);
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
       const body = {
-        systemInstruction: "You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor. You are given a student's resume and a professor's information. You need to write a personalized email to the professor based on the student's resume and the professor's information. NO PLACEHOLDERS ALLOWED.",
         contents: [
           {
             parts: [
@@ -220,7 +224,6 @@ async function generatePersonalizedEmailWithResume(
     const base64Pdf = arrayBufferToBase64(pdfBuffer);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
     const body = {
-      systemInstruction: "You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor. You are given a student's resume and a professor's information. You need to write a personalized email to the professor based on the student's resume and the professor's information. NO PLACEHOLDERS ALLOWED.",
       contents: [
         {
           parts: [
@@ -247,7 +250,6 @@ async function generatePersonalizedEmailWithResume(
     const fileUri = await uploadPdfToGeminiFileApi(pdfBuffer, "student_resume.pdf", geminiApiKey);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
     const body = {
-      systemInstruction: "You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor. You are given a student's resume and a professor's information. You need to write a personalized email to the professor based on the student's resume and the professor's information. NO PLACEHOLDERS ALLOWED.",
       contents: [
         {
           parts: [
@@ -283,6 +285,51 @@ function postProcessStudentPlaceholders(email: string, studentInfo: { name: stri
 }
 
 // Helper to get a valid Gmail access token, refreshing if needed
+interface SendEmailResponse {
+  threadId: string;
+  messageId: string;
+}
+
+async function sendEmail(accessToken: string, to: string, subject: string, rawEmail: string): Promise<SendEmailResponse> {
+  // The rawEmail parameter should already include all headers and body
+  // Just ensure it has the To header if not already included
+  if (!rawEmail.includes('To: ')) {
+    rawEmail = `To: ${to}\n${rawEmail}`;
+  }
+  
+  // Encode the email for Gmail API
+  const encodedMessage = btoa(rawEmail)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  console.log(`[sendEmail] Sending email to: ${to}, subject: ${subject}`);
+
+  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send?fields=id,threadId", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ 
+      raw: encodedMessage,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`[sendEmail] Gmail API error for ${to}: ${res.status} ${res.statusText} - ${errorText}`);
+    throw new Error(`Gmail API error: ${res.status} ${res.statusText} - ${errorText}`);
+  } else {
+    const responseData = await res.json();
+    console.log(`[sendEmail] Email sent successfully to: ${to}, thread ID: ${responseData.threadId}`);
+    return {
+      threadId: responseData.threadId,
+      messageId: responseData.id
+    };
+  }
+}
+
 async function getValidGmailAccessToken(supabase: any, userId: string): Promise<string> {
   // Fetch token info
   const { data, error } = await supabase
@@ -331,42 +378,6 @@ async function getValidGmailAccessToken(supabase: any, userId: string): Promise<
       .eq('provider', 'gmail');
   }
   return access_token;
-}
-
-async function sendEmail(accessToken: string, to: string, subject: string, body: string): Promise<void> {
-  const message = [
-    "Content-Type: text/plain; charset=UTF-8\n",
-    "MIME-Version: 1.0\n",
-    `To: ${to}\n`,
-    "From: me\n",
-    `Subject: ${subject}\n\n`,
-    body,
-  ].join("");
-
-  // Base64url encode
-  const encodedMessage = btoa(message)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-
-  console.log(`[sendEmail] Sending email to: ${to}, subject: ${subject}`);
-
-  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ raw: encodedMessage }),
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error(`[sendEmail] Gmail API error for ${to}: ${res.status} ${res.statusText} - ${errorText}`);
-    throw new Error(`Gmail API error: ${res.status} ${res.statusText} - ${errorText}`);
-  } else {
-    console.log(`[sendEmail] Email sent successfully to: ${to}`);
-  }
 }
 
 const BATCH_SIZE = 10; // Number of emails to process per invocation
@@ -437,26 +448,64 @@ serve(async (_req: Request) => {
           supabase,
           { name: studentName, email: studentEmail }
         );
-        // Send email
+        const emailSubject = `Research Opportunity Inquiry - ${emailJob.research_areas?.[0] || "Research"}`;
+        
+        // First send the email to get the Gmail thread ID
+        const emailWithTracking = `To: ${emailJob.professor_email}\n` +
+                                `From: ${studentEmail}\n` +
+                                `Subject: ${emailSubject}\n` +
+                                'MIME-Version: 1.0\n' +
+                                'Content-Type: multipart/alternative; boundary="BOUNDARY"\n\n' +
+                                '--BOUNDARY\n' +
+                                'Content-Type: text/plain; charset=utf-8\n\n' +
+                                `${personalizedEmail}\n\n` +
+                                '--BOUNDARY\n' +
+                                'Content-Type: text/html; charset=utf-8\n\n' +
+                                `<div style="white-space: pre-wrap;">${personalizedEmail.replace(/\n/g, '<br>')}</div>`;
+
+        const sendResponse = await sendEmail(
+          accessToken,
+          emailJob.professor_email,
+          emailSubject,
+          emailWithTracking
+        );
+        
+        // Use the Gmail thread ID as our tracking ID
+        const trackingId = sendResponse.threadId;
+        const trackingPixelUrl = `${new URL(supabaseUrl).origin}/functions/v1/track-email-pixel?id=${trackingId}`;
+        
+        // Update the email with the tracking pixel
+        const emailWithPixel = emailWithTracking.replace(
+          '</div>',
+          `</div><img src="${trackingPixelUrl}" alt="" width="1" height="1" style="display:none;" />`
+        );
+        
+        // Resend the email with the tracking pixel
         await sendEmail(
           accessToken,
           emailJob.professor_email,
-          `Research Opportunity Inquiry - ${emailJob.research_areas?.[0] || "Research"}`,
-          personalizedEmail
+          emailSubject,
+          emailWithPixel
         );
+        
+        // Log the tracking ID (which is the Gmail thread ID)
+        console.log(`[process-pending-emails] Using Gmail thread ID as tracking ID: ${trackingId}`);
+        
         // Mark as sent
         await supabase
           .from("pending_emails")
           .update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
           .eq("id", emailJob.id);
-        // Log in email_logs
+          
+        // Log in email_logs with the tracking_id and reference to the pending_email
         await supabase.from("email_logs").insert({
           campaign_id: emailJob.campaign_id,
           student_id: campaign.user_id,
+          pending_email_id: emailJob.id,  // Reference to the pending_emails row
           sent_at: new Date().toISOString(),
           status: "sent",
           open_count: 0,
-          tracking_id: null,
+          tracking_id: trackingId,  // This is the Gmail thread ID
           updated_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
         });

@@ -13,6 +13,7 @@ const oauth2Client = new OAuth2Client(
 const SCOPES = [
   'https://www.googleapis.com/auth/gmail.send',
   'https://www.googleapis.com/auth/gmail.compose',
+  'https://www.googleapis.com/auth/gmail.readonly',
 ];
 
 export function getAuthUrl(): string {
@@ -28,12 +29,18 @@ export async function getTokens(code: string) {
   return tokens;
 }
 
+export interface SendEmailOptions {
+  to: string;
+  subject: string;
+  body: string;
+  trackingId?: string;
+  campaignId?: string;
+}
+
 export async function sendEmail(
   accessToken: string,
-  to: string,
-  subject: string,
-  body: string
-): Promise<void> {
+  options: SendEmailOptions
+): Promise<{ messageId: string; threadId: string }> {
   try {
     // Set credentials
     oauth2Client.setCredentials({ access_token: accessToken });
@@ -41,15 +48,32 @@ export async function sendEmail(
     // Create Gmail API client
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
+    // Generate a tracking ID if not provided
+    const trackingId = options.trackingId || `track-${crypto.randomUUID()}`;
+    
+    // Create email headers
+    const headers = [
+      'Content-Type: text/plain; charset="UTF-8"',
+      'MIME-Version: 1.0',
+      `To: ${options.to}`,
+      'From: me',
+      `Subject: ${options.subject}`,
+      `X-Tracking-ID: ${trackingId}`,
+      `References: <${trackingId}@research-connect.com>`,
+      `In-Reply-To: <${trackingId}@research-connect.com>`
+    ];
+
+    // Add campaign ID if provided
+    if (options.campaignId) {
+      headers.push(`X-Campaign-ID: ${options.campaignId}`);
+    }
+
     // Create email message
     const message = [
-      'Content-Type: text/plain; charset="UTF-8"\n',
-      'MIME-Version: 1.0\n',
-      `To: ${to}\n`,
-      'From: me\n',
-      `Subject: ${subject}\n\n`,
-      body,
-    ].join('');
+      ...headers,
+      '', // Empty line to separate headers from body
+      options.body,
+    ].join('\n');
 
     // Encode message in base64
     const encodedMessage = Buffer.from(message)
@@ -59,12 +83,17 @@ export async function sendEmail(
       .replace(/=+$/, '');
 
     // Send email
-    await gmail.users.messages.send({
+    const response = await gmail.users.messages.send({
       userId: 'me',
       requestBody: {
         raw: encodedMessage,
       },
     });
+
+    return {
+      messageId: response.data.id || '',
+      threadId: response.data.threadId || ''
+    };
   } catch (error) {
     console.error('Error sending email:', error);
     throw new Error('Failed to send email. Please try again.');

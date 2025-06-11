@@ -192,7 +192,6 @@ export default function NewCampaignPage() {
                     value={formData.researchInterests}
                     onChange={(interests) => setFormData({ ...formData, researchInterests: interests })}
                     placeholder="Add research interests..."
-                    required
                   />
                 )}
               </Column>

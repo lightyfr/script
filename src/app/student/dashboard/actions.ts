@@ -50,9 +50,13 @@ export async function getStudentDashboardStats() {
       stats: {
         emailsSent: 0,
         applications: 0,
-        offers,
+        offers: offers || 0,
+        responses: 0,
         responseRate: 0,
-        totalCampaigns: 0,
+        openRate: 0,
+        totalOpens: 0,
+        totalTrackedEmails: 0,
+        totalCampaigns: 0
       },
       monthlyChartData: processMonthlyData([]),
     };
@@ -66,7 +70,8 @@ export async function getStudentDashboardStats() {
     { count: emailsSent = 0 },
     { count: offers = 0 },
     { count: repliedEmails = 0 },
-    { data: monthlyActivityData = [] }
+    { data: monthlyActivityData = [] },
+    { data: emailLogs = [] }
   ] = await Promise.all([
     supabase
       .from('pending_emails')
@@ -87,17 +92,29 @@ export async function getStudentDashboardStats() {
       .select('created_at, status')
       .in('campaign_id', campaignIds)
       .gte('created_at', new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString()),
+    supabase
+      .from('email_logs')
+      .select('id, open_count, campaign_id')
+      .in('campaign_id', campaignIds),
   ]);
 
   const responseRate = (emailsSent ?? 0) > 0 ? ((repliedEmails ?? 0) / (emailsSent ?? 0)) * 100 : 0;
+  
+  const totalOpens = emailLogs?.reduce((sum, log) => sum + (log.open_count || 0), 0) || 0;
+  const totalTrackedEmails = emailLogs?.length || 0;
+  const openRate = totalTrackedEmails > 0 ? (totalOpens / totalTrackedEmails) * 100 : 0;
 
   return {
     stats: {
-      emailsSent: emailsSent ?? 0,
+      emailsSent: emailsSent || 0,
       applications: 0,
-      offers,
+      offers: offers || 0,
+      responses: repliedEmails || 0,
       responseRate: parseFloat(responseRate.toFixed(1)),
-      totalCampaigns,
+      openRate: parseFloat(openRate.toFixed(1)),
+      totalOpens: totalOpens || 0,
+      totalTrackedEmails: totalTrackedEmails || 0,
+      totalCampaigns: campaignIds.length
     },
     monthlyChartData: processMonthlyData(monthlyActivityData || []),
   };

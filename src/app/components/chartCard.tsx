@@ -10,24 +10,33 @@ interface ChartCardProps {
   variant: "success" | "danger" | "warning" | "info";
   icon: IconName;
   label: string;
+  subtitle?: string;
+  change?: string;
   value: string | number;
 }
 
-export const ChartCard: React.FC<ChartCardProps> = ({ icon, label, value, variant }) => (
+export const ChartCard: React.FC<ChartCardProps> = ({ icon, label, value, variant, subtitle, change }) => (
     <Row fillWidth border="neutral-alpha-weak"
-        background="neutral-medium"
+        background="neutral-weak"
         className={styles.card}
         radius="l"
         vertical="center"
         padding="l"
         horizontal="space-between">
-      <Column>
+          <Column>
+      <Column vertical="center">
         <Text variant="display-strong-m" onBackground="neutral-strong">
           {value}
         </Text>
-        <Text variant="body-strong-s" onBackground="neutral-medium">
+        <Text variant="body-strong-m" onBackground="neutral-medium">
           {label}
         </Text>
+        </Column>
+
+        <Text marginTop="8" variant="body-default-xs" onBackground="neutral-medium">
+          {subtitle}
+        </Text>
+
       </Column>
       <Icon
         name={
