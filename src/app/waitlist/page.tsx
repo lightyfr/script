@@ -143,7 +143,7 @@ export default function WaitlistPage() {
             radius="l"
           >
             <form onSubmit={handleSubmit}>
-              <Column gap="m">
+              <Column gap="l">
                 <Row gap="m" vertical='center' mobileDirection='column'>
                   <Input
                   size={29}
