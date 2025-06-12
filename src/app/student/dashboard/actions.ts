@@ -52,7 +52,7 @@ export async function getStudentDashboardStats() {
         totalTrackedEmails: 0,
         totalCampaigns: 0
       },
-      monthlyChartData: processMonthlyData([]),
+      dailyChartData: processDailyData([]),
     };
   }
 
@@ -63,8 +63,9 @@ export async function getStudentDashboardStats() {
     { count: emailsSent = 0 },
     { data: emailLogs = [] },
     { count: repliedEmails = 0 },
-    { data: monthlyActivityData = [] },
-    { data: allEmailLogs = [] }
+    { data: pendingEmails = [] },
+    { data: allEmailLogs = [] },
+    { data: repliedEmailsData = [] }
   ] = await Promise.all([
     // Count of all sent emails
     supabase
@@ -76,7 +77,7 @@ export async function getStudentDashboardStats() {
     // Get all email logs to calculate open count
     supabase
       .from('email_logs')
-      .select('open_count, status, campaign_id')
+      .select('open_count, status, campaign_id, created_at')
       .in('campaign_id', campaignIds),
       
     // Count of replied emails (from email_logs where status is 'replied')
@@ -86,20 +87,32 @@ export async function getStudentDashboardStats() {
       .in('campaign_id', campaignIds)
       .eq('status', 'replied'),
       
-    // Get monthly activity data
+    // Get sent emails for the last 30 days for activity data
     supabase
       .from('pending_emails')
-      .select('created_at, status')
+      .select('id, created_at, status')
       .in('campaign_id', campaignIds)
-      .gte('created_at', new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString()),
+      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()), // Last 30 days
       
     // Get all email logs for tracking
     supabase
       .from('email_logs')
-      .select('id, open_count, campaign_id, status')
+      .select('id, open_count, campaign_id, status, created_at')
       .in('campaign_id', campaignIds),
+      
+    // Get replied emails with timestamps for the last 30 days
+    supabase
+      .from('email_logs')
+      .select('id, created_at, status')
+      .in('campaign_id', campaignIds)
+      .eq('status', 'replied')
+      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
   ]);
   
+  // Process daily activity data with both sent and replied emails
+  const pendingEmailsArray = pendingEmails || [];
+  const repliedEmailsArray = repliedEmailsData || [];
+  const dailyActivityData = [...pendingEmailsArray, ...repliedEmailsArray];
   // Calculate total opens by summing up all open_counts
   const totalOpens = (emailLogs || []).reduce((sum, log) => sum + (log.open_count || 0), 0);
   const totalTrackedEmails = (allEmailLogs || []).length;
@@ -107,9 +120,6 @@ export async function getStudentDashboardStats() {
   const responseRate = (emailsSent ?? 0) > 0 ? ((repliedEmails ?? 0) / (emailsSent ?? 0)) * 100 : 0;
   const openRate = totalTrackedEmails > 0 ? (totalOpens / totalTrackedEmails) * 100 : 0;
 
-  console.log("emailLogs", emailLogs);
-  console.log("totalOpens", totalOpens);
-  console.log("repliedEmails", repliedEmails);
   return {
     stats: {
       emailsSent: emailsSent || 0,
@@ -121,49 +131,75 @@ export async function getStudentDashboardStats() {
       totalTrackedEmails: totalTrackedEmails || 0,
       totalCampaigns: campaignIds.length
     },
-    monthlyChartData: processMonthlyData(monthlyActivityData || []),
+    dailyChartData: processDailyData(dailyActivityData || []),
   };
 }
 
-// Helper function to process monthly data
-// Adjusted 'status' to string | null for pending_emails
-function processMonthlyData(logs: Array<{ created_at: string; status: string | null }>) {
-  const monthActivity: { [monthYear: string]: { name: string, activity: number; replied: number } } = {};
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// Helper function to process daily data
+function processDailyData(logs: Array<{ created_at: string; status?: string | null }>): Array<{ name: string; date: Date; activity: number; responseRate: number }> {
+  const dailyActivity: { [dateKey: string]: { 
+    name: string; 
+    date: Date;
+    sent: number; // Track sent emails
+    replied: number; // Track replies
+  } } = {};
+  
+  const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
 
-  // Initialize data for the last 3 months to ensure they are present
+  // Initialize data for the last 30 days
   const today = new Date();
-  for (let i = 2; i >= 0; i--) {
-    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-    const monthKey = monthNames[d.getMonth()];
-    const year = d.getFullYear();
-    const monthYearKey = `${monthKey}-${year}`;
-    if (!monthActivity[monthYearKey]) {
-        monthActivity[monthYearKey] = { name: monthKey, activity: 0, replied: 0 };
-    }
+  today.setHours(0, 0, 0, 0);
+  
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const formattedDate = dateFormatter.format(date);
+    dailyActivity[dateKey] = { 
+      name: formattedDate, 
+      date: new Date(date), // Store the date object for sorting
+      sent: 0,
+      replied: 0 
+    };
   }
 
+
+  // Process each log entry
   logs.forEach(log => {
     const date = new Date(log.created_at);
-    const monthKey = monthNames[date.getMonth()];
-    const year = date.getFullYear();
-    const monthYearKey = `${monthKey}-${year}`;
-
-    // Ensure the month is within our tracked range (last 3 months)
-    if (monthActivity[monthYearKey]) {
-        monthActivity[monthYearKey].activity++;
-        if (log.status === 'replied') {
-            monthActivity[monthYearKey].replied++;
-        }
+    date.setHours(0, 0, 0, 0);
+    const dateKey = date.toISOString().split('T')[0];
+    
+    if (dailyActivity[dateKey]) {
+      if (log.status === 'replied') {
+        // This is a reply
+        dailyActivity[dateKey].replied++;
+      } else if (log.status === 'sent' || log.status === 'delivered') {
+        // This is a sent email
+        dailyActivity[dateKey].sent++;
+      } else if (log.status === undefined) {
+        // Default to counting as sent if status is not specified
+        dailyActivity[dateKey].sent++;
+      }
     }
   });
 
-  return Object.values(monthActivity)
-    .map(data => ({
-      name: data.name,
-      activity: data.activity,
-      responseRate: data.activity > 0 ? parseFloat(((data.replied / data.activity) * 100).toFixed(1)) : 0,
-    }));
+  // Convert to array, sort by date, and calculate response rates
+  return Object.values(dailyActivity)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map(data => {
+      // Activity is the number of sent emails
+      // Response rate is (replies / sent) * 100
+      const activity = data.sent;
+      const responseRate = activity > 0 ? (data.replied / activity) * 100 : 0;
+      
+      return {
+        name: data.name,
+        date: data.date,
+        activity: activity,
+        responseRate: parseFloat(responseRate.toFixed(1))
+      };
+    });
 }
 
 

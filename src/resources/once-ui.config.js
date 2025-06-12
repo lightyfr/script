@@ -111,4 +111,21 @@ const social = {
   discord: "https://discord.com/invite/5EyAQ4eNdS",
 };
 
-export { baseURL, font, style, meta, schema, social, effects };
+
+const dataStyle = {
+  variant: "gradient", // flat | gradient | outline
+  mode: "sequential", // categorical | divergent | sequential
+  height: 24, // default chart height
+  axis: {
+    stroke: "var(--success-alpha-weak)",
+  },
+  tick: {
+    fill: "var(--success-on-background-weak)",
+    fontSize: 11,
+    line: false
+  },
+};
+
+export { baseURL, font, style, meta, schema, social, effects, dataStyle };
+
+

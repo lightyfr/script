@@ -7,6 +7,8 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const geminiApiKey = Deno.env.get("GEMINI_API_KEY2") ?? "";
 const geminiApiKey2 = Deno.env.get("GEMINI_API_KEY3") ?? "";
 const geminiApiKey3 = Deno.env.get("GEMINI_API_KEY4") ?? "";
+const geminiApiKey4 = Deno.env.get("GEMINI_API_KEY5") ?? "";
+const geminiApiKey5 = Deno.env.get("GEMINI_API_KEY6") ?? "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -400,123 +402,110 @@ serve(async (_req: Request) => {
     }
     // Track unique campaign_ids processed in this batch
     const processedCampaignIds = new Set<string>();
-    for (const [i, emailJob] of pendingEmails.entries()) {
-      processedCampaignIds.add(emailJob.campaign_id);
-      try {
-        // Get campaign and student info
-        const { data: campaign } = await supabase
-          .from("campaigns")
-          .select("*")
-          .eq("id", emailJob.campaign_id)
-          .single();
-        const { data: studentProfile } = await supabase
-          .from("student_profiles")
-          .select("resume_url")
-          .eq("user_id", campaign.user_id)
-          .single();
-        const { data: userInfo } = await supabase
-          .from("users")
-          .select("firstName, lastName, email")
-          .eq("id", campaign.user_id)
-          .single();
-        const { data: oauthData } = await supabase
-          .from("user_oauth_tokens")
-          .select("access_token")
-          .eq("user_id", campaign.user_id)
-          .eq("provider", "gmail")
-          .single();
-        // Compose student info for signature
-        const studentName = userInfo?.firstName && userInfo?.lastName ? `${userInfo.firstName} ${userInfo.lastName}` : userInfo?.firstName || userInfo?.lastName || "";
-        const studentEmail = userInfo?.email || "";
-        const studentPhone = studentProfile?.phone || null;
-        // Get a valid Gmail access token (refresh if needed)
-        const accessToken = await getValidGmailAccessToken(supabase, campaign.user_id);
-        // Alternate API keys
-        const apiKeys = [geminiApiKey, geminiApiKey2, geminiApiKey3];
-        const apiKeyToUse = apiKeys[i % 3];
-        // Generate personalized email
-        const personalizedEmail = await generatePersonalizedEmailWithResume(
-          {
-            name: emailJob.professor_name,
-            email: emailJob.professor_email,
-            university: emailJob.university,
-            department: emailJob.department,
-            researchAreas: emailJob.research_areas,
-          },
-          studentProfile?.resume_url || null,
-          apiKeyToUse,
-          supabase,
-          { name: studentName, email: studentEmail }
-        );
-        const emailSubject = `Research Opportunity Inquiry - ${emailJob.research_areas?.[0] || "Research"}`;
-        
-        // First send the email to get the Gmail thread ID
-        const emailWithTracking = `To: ${emailJob.professor_email}\n` +
-                                `From: ${studentEmail}\n` +
-                                `Subject: ${emailSubject}\n` +
-                                'MIME-Version: 1.0\n' +
-                                'Content-Type: multipart/alternative; boundary="BOUNDARY"\n\n' +
-                                '--BOUNDARY\n' +
-                                'Content-Type: text/plain; charset=utf-8\n\n' +
-                                `${personalizedEmail}\n\n` +
-                                '--BOUNDARY\n' +
-                                'Content-Type: text/html; charset=utf-8\n\n' +
-                                `<div style="white-space: pre-wrap;">${personalizedEmail.replace(/\n/g, '<br>')}</div>`;
-
-        const sendResponse = await sendEmail(
-          accessToken,
-          emailJob.professor_email,
-          emailSubject,
-          emailWithTracking
-        );
-        
-        // Use the Gmail thread ID as our tracking ID
-        const trackingId = sendResponse.threadId;
-        const trackingPixelUrl = `${new URL(supabaseUrl).origin}/functions/v1/track-email-pixel?id=${trackingId}`;
-        
-        // Update the email with the tracking pixel
-        const emailWithPixel = emailWithTracking.replace(
-          '</div>',
-          `</div><img src="${trackingPixelUrl}" alt="" width="1" height="1" style="display:none;" />`
-        );
-        
-        // Resend the email with the tracking pixel
-        await sendEmail(
-          accessToken,
-          emailJob.professor_email,
-          emailSubject,
-          emailWithPixel
-        );
-        
-        // Log the tracking ID (which is the Gmail thread ID)
-        console.log(`[process-pending-emails] Using Gmail thread ID as tracking ID: ${trackingId}`);
-        
-        // Mark as sent
-        await supabase
-          .from("pending_emails")
-          .update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-          .eq("id", emailJob.id);
-          
-        // Log in email_logs with the tracking_id and reference to the pending_email
-        await supabase.from("email_logs").insert({
-          campaign_id: emailJob.campaign_id,
-          student_id: campaign.user_id,
-          pending_email_id: emailJob.id,  // Reference to the pending_emails row
-          sent_at: new Date().toISOString(),
-          status: "sent",
-          open_count: 0,
-          tracking_id: trackingId,  // This is the Gmail thread ID
-          updated_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        });
-      } catch (err) {
-        // Mark as failed
-        await supabase
-          .from("pending_emails")
-          .update({ status: "failed", error_message: err instanceof Error ? err.message : "Unknown error", updated_at: new Date().toISOString() })
-          .eq("id", emailJob.id);
-      }
-    }
+    const apiKeys = [geminiApiKey, geminiApiKey2, geminiApiKey3, geminiApiKey4, geminiApiKey5];
+    const emailsByKey: Record<string, typeof pendingEmails> = {
+      [geminiApiKey]: [],
+      [geminiApiKey2]: [],
+      [geminiApiKey3]: [],
+      [geminiApiKey4]: [],
+      [geminiApiKey5]: [],
+    };
+    
+    // Distribute emails round-robin across keys
+    pendingEmails.forEach((email: any, i: number) => {
+      const key = apiKeys[i % apiKeys.length];
+      emailsByKey[key].push(email);
+    });
+    
+    await Promise.all(apiKeys.map(async (key) => {
+      const jobs = emailsByKey[key] || [];
+      await Promise.all(jobs.map(async (emailJob: { campaign_id: any; professor_name: any; professor_email: string; university: any; department: any; research_areas: any[]; id: any; }) => {
+        processedCampaignIds.add(emailJob.campaign_id);
+        try {
+          // Extract and prepare info
+          const campaign = await supabase
+            .from("campaigns")
+            .select("*")
+            .eq("id", emailJob.campaign_id)
+            .single()
+            .then((res: { data: any; }) => res.data);
+    
+          const studentProfile = await supabase
+            .from("student_profiles")
+            .select("resume_url, phone")
+            .eq("user_id", campaign.user_id)
+            .single()
+            .then((res: { data: any; }) => res.data);
+    
+          const userInfo = await supabase
+            .from("users")
+            .select("firstName, lastName, email")
+            .eq("id", campaign.user_id)
+            .single()
+            .then((res: { data: any; }) => res.data);
+    
+          const studentName = userInfo?.firstName && userInfo?.lastName
+            ? `${userInfo.firstName} ${userInfo.lastName}`
+            : userInfo?.firstName || userInfo?.lastName || "";
+          const studentEmail = userInfo?.email || "";
+          const accessToken = await getValidGmailAccessToken(supabase, campaign.user_id);
+    
+          const personalizedEmail = await generatePersonalizedEmailWithResume(
+            {
+              name: emailJob.professor_name,
+              email: emailJob.professor_email,
+              university: emailJob.university,
+              department: emailJob.department,
+              researchAreas: emailJob.research_areas,
+            },
+            studentProfile?.resume_url || null,
+            key,
+            supabase,
+            { name: studentName, email: studentEmail }
+          );
+    
+          const emailSubject = `Research Opportunity Inquiry - ${emailJob.research_areas?.[0] || "Research"}`;
+          const emailWithTracking = `To: ${emailJob.professor_email}\n` +
+                                    `From: ${studentEmail}\n` +
+                                    `Subject: ${emailSubject}\n` +
+                                    'MIME-Version: 1.0\n' +
+                                    'Content-Type: multipart/alternative; boundary="BOUNDARY"\n\n' +
+                                    '--BOUNDARY\n' +
+                                    'Content-Type: text/plain; charset=utf-8\n\n' +
+                                    `${personalizedEmail}\n\n` +
+                                    '--BOUNDARY\n' +
+                                    'Content-Type: text/html; charset=utf-8\n\n' +
+                                    `<div style="white-space: pre-wrap;">${personalizedEmail.replace(/\n/g, '<br>')}</div>`;
+    
+          const sendResponse = await sendEmail(accessToken, emailJob.professor_email, emailSubject, emailWithTracking);
+          const trackingId = sendResponse.threadId;
+          const trackingPixelUrl = `${new URL(supabaseUrl).origin}/functions/v1/track-email-pixel?id=${trackingId}`;
+          const emailWithPixel = emailWithTracking.replace('</div>', `</div><img src="${trackingPixelUrl}" alt="" width="1" height="1" style="display:none;" />`);
+    
+          await sendEmail(accessToken, emailJob.professor_email, emailSubject, emailWithPixel);
+          await supabase.from("pending_emails").update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", emailJob.id);
+          await supabase.from("email_logs").insert({
+            campaign_id: emailJob.campaign_id,
+            student_id: campaign.user_id,
+            pending_email_id: emailJob.id,
+            sent_at: new Date().toISOString(),
+            status: "sent",
+            open_count: 0,
+            tracking_id: trackingId,
+            updated_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          });
+    
+        } catch (err) {
+          await supabase
+            .from("pending_emails")
+            .update({ status: "failed", error_message: err instanceof Error ? err.message : "Unknown error", updated_at: new Date().toISOString() })
+            .eq("id", emailJob.id);
+        }
+      }));
+    }));
+    
+    
     // After processing, check for each campaign if all emails are done, and call finalize-campaign if so
     for (const campaignId of processedCampaignIds) {
       // Check if any pending emails remain for this campaign
