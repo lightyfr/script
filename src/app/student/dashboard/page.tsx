@@ -7,6 +7,7 @@ import { LineChart } from "@/once-ui/modules/data/LineChart";
 import { ChartCard } from "@/app/components/chartCard";
 import { PricingTable, useAuth } from "@clerk/nextjs";
 import { getStudentName, getStudentDashboardStats, hasUserGmailToken, getCampaignStatus, getRecentActivity, getConnectionStats } from "./actions";
+import { LineBarChart } from "@once-ui-system/core";
 
 
 interface ActivityItemProps {
@@ -63,7 +64,12 @@ function StudentDashboardInner() {
       totalTrackedEmails: number;
       totalCampaigns: number;
     };
-    monthlyChartData: Array<{ name: string; activity: number; responseRate: number }>;
+    dailyChartData: Array<{ 
+      name: string; 
+      date: Date;
+      activity: number; 
+      responseRate: number 
+    }>;
   } | null>({
     stats: {
       emailsSent: 0,
@@ -75,11 +81,7 @@ function StudentDashboardInner() {
       totalTrackedEmails: 0,
       totalCampaigns: 0
     },
-    monthlyChartData: [
-      { name: "Jan", activity: 0, responseRate: 0 },
-      { name: "Feb", activity: 0, responseRate: 0 },
-      { name: "Mar", activity: 0, responseRate: 0 },
-    ]
+    dailyChartData: []
   });
   const [connectionStats, setConnectionStats] = useState<{
     monthlyConnectionData: Array<{ name: string; activity: number; responseRate: number }>;
@@ -127,7 +129,7 @@ function StudentDashboardInner() {
             totalTrackedEmails: statsData.stats.totalTrackedEmails,
             totalCampaigns: statsData.stats.totalCampaigns
           },
-          monthlyChartData: statsData.monthlyChartData
+          dailyChartData: statsData.dailyChartData
         });
       }
       const campaigns = await getCampaignStatus();
@@ -154,18 +156,10 @@ function StudentDashboardInner() {
           totalCampaigns: 0,
           ...(prev?.stats || {})
         },
-        monthlyChartData: [
-          { name: "Jan", activity: 0, responseRate: 0 },
-          { name: "Feb", activity: 0, responseRate: 0 },
-          { name: "Mar", activity: 0, responseRate: 0 },
-        ],
+        dailyChartData: [],
       }));
       setConnectionStats({
-        monthlyConnectionData: [
-          { name: "Jan", activity: 0, responseRate: 0 },
-          { name: "Feb", activity: 0, responseRate: 0 },
-          { name: "Mar", activity: 0, responseRate: 0 },
-        ],
+        monthlyConnectionData: [],
       });
       setCampaignStatus([]);
       setRecentActivity([]);
@@ -388,42 +382,72 @@ function StudentDashboardInner() {
       </Row>
         <Row gap="24">      
           <LineChart
-            border="neutral-medium"
-            data-viz="divergent"
-            fill
-            minHeight={20}
-            data={dashboardStats?.monthlyChartData || [
-              { name: "Jan", activity: 10, responseRate: 30 },
-              { name: "Feb", activity: 20, responseRate: 50 },
-              { name: "Mar", activity: 15, responseRate: 40 },
-            ]}
+            data={dashboardStats?.dailyChartData?.map(item => ({
+              date: item.date,
+              'Emails Sent': item.activity,
+              'Response Rate': item.responseRate
+            })) || []}
             series={[
-              { key: "activity", color: "#0072ff8e" },
-              { key: "responseRate", color: "#00b3008e" },
+              { key: 'Emails Sent', color: "magenta" },
+              { key: 'Response Rate', color: "aqua" },
             ]}
-            title="Emails"
-            description="Your email activity and response rate over the last three months."
-            labels="both"
-            curveType="natural"
+            date={{
+              format: 'MMM d',
+              start: (() => {
+                const d = new Date();
+                d.setDate(d.getDate() - 29); // Last 30 days
+                d.setHours(0, 0, 0, 0);
+                return d;
+              })(),
+              end: new Date(),
+              selector: true,
+              presets: {
+                display: true,
+                granularity: 'week'
+              },
+            }}
+            title="Daily Activity (Last 30 Days)"
+            description="Track your daily email activity and response rates"
           />
-          <LineChart
+          <LineBarChart
             border="neutral-medium"
             data-viz="divergent"
             fill
-            minHeight={20}
-            data={connectionStats?.monthlyConnectionData || [
-              { name: "Jan", activity: 2, responseRate: 25 },
-              { name: "Feb", activity: 6, responseRate: 40 },
-              { name: "Mar", activity: 4, responseRate: 30 },
-            ]}
+            minHeight={24}
+            data={connectionStats?.monthlyConnectionData?.map((item, index) => {
+              // Create a date for each month (using the 1st of each month)
+              const date = new Date();
+              date.setMonth(date.getMonth() - (2 - index)); // Last 3 months
+              date.setDate(1);
+              date.setHours(0, 0, 0, 0);
+              
+              return {
+                date,
+                'Connections': item.activity,
+                'Acceptance Rate': item.responseRate
+              };
+            }) || []}
+            date={{
+              format: 'MMM yyyy',
+              start: (() => {
+                const d = new Date();
+                d.setMonth(d.getMonth() - 2);
+                d.setDate(1);
+                return d;
+              })(),
+              end: new Date(),
+              selector: true,
+              presets: {
+                display: true,
+                granularity: 'month'
+              }
+            }}
             series={[
-              { key: "activity", color: "#0072ff8e" },
-              { key: "responseRate", color: "#00b3008e" },
+              { key: 'Connections', color: '#0072ff8e' },
+              { key: 'Acceptance Rate', color: '#00b3008e' },
             ]}
-            title="Connections"
-            description="Your connection requests and acceptance rate over the last three months."
-            labels="both"
-            curveType="natural"
+            title="Monthly Connections"
+            description="Your connection requests and acceptance rate over the last three months"
           />
         </Row>
          <Grid columns="2" tabletColumns="1" gap="24" fillWidth>

@@ -1,279 +1,305 @@
 "use client";
 
-import React from "react";
-import moment from 'moment'
+import React, { useState, useEffect, useMemo } from "react";
+import { isWithinInterval, parseISO } from "date-fns";
+import { formatDate } from "./utils/formatDate";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
+  AreaChart as RechartsAreaChart,
+  Area as RechartsArea,
+  YAxis as RechartsYAxis,
+  XAxis as RechartsXAxis,
+  CartesianGrid as RechartsCartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer as RechartsResponsiveContainer,
+  Legend as RechartsLegend,
 } from "recharts";
-import { Flex, Column, Text, Row } from "../../components";
+import { Column, Row, DateRange } from "../../components";
+import {
+  ChartHeader,
+  DataTooltip,
+  Legend,
+  ChartProps,
+  ChartStatus,
+  ChartVariant,
+} from "@once-ui-system/core";
 
-interface DataPoint {
-  [key: string]: string | number | Date;
+import { SeriesConfig, curveType } from "./interfaces";
+
+import { LinearGradient } from "./Gradient";
+import { schemes } from "../data/utils/types";
+import { getDistributedColor } from "./utils/colorDistribution";
+import { useDataTheme } from "./utils/DateThemeProvider";
+
+interface LineChartProps extends ChartProps {
+  curve?: curveType;
+  "data-viz-style"?: string;
 }
-
-interface SeriesConfig {
-  key: string;
-  color?: string;
-}
-
-interface LineChartProps extends React.ComponentProps<typeof Flex> {
-  data: DataPoint[];
-  series: SeriesConfig[];
-  colors?: string[];
-  title?: string;
-  description?: string;
-  legend?: boolean;
-  tooltip?: string;
-  labels?: "x" | "y" | "both";
-  curveType?: "linear" | "monotone" | "monotoneX" | "step" | "natural";
-  isTimeSeries?: boolean;
-  timeFormat?: string;
-}
-
-const defaultColors = ['accent-background-strong', 'accent-background-strong', 'accent-background-strong', 'accent-background-strong', 'scheme-blue-100', 'scheme-blue-100', 'scheme-blue-100', 'scheme-blue-100', 'scheme-blue-100', 'scheme-blue-100'];
-
-const CustomTooltip = ({ active, payload, label, isTimeSeries, timeFormat = "MMM dd, yyyy" }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <Column
-        minWidth={8}
-        gap="8"
-        background="surface"
-        radius="m"
-        border="neutral-alpha-medium"
-        data-viz="divergent">
-        <Flex
-          fillWidth
-          paddingTop="8"
-          paddingX="12"
-        >
-          <Text
-            variant="label-default-s"
-            onBackground="neutral-strong"
-          >
-            {isTimeSeries ? moment(label).format(timeFormat) : label}
-          </Text>
-        </Flex>
-        <Column
-          fillWidth
-          horizontal="space-between"
-          paddingBottom="8"
-          paddingX="12"
-          gap="4">
-          {payload.map((entry: any, index: number) => (
-            <Row key={index} horizontal="space-between" fillWidth gap="16">
-              <Row vertical="center" gap="8">
-                <Flex
-                  style={{
-                    backgroundClip: "padding-box",
-                    border: `1px solid ${entry.stroke}`,
-                    background: `linear-gradient(to bottom, ${entry.stroke} 0%, transparent 100%)`
-                  }}
-                  minWidth="12"
-                  minHeight="12"
-                  radius="xs"
-                />
-                <Text onBackground="neutral-weak" variant="label-default-s">
-                  {entry.name}
-                </Text>
-              </Row>
-              <Text onBackground="neutral-strong" variant="label-default-s">
-                {entry.value.toLocaleString()}
-              </Text>
-            </Row>
-          ))}
-        </Column>
-      </Column>
-    );
-  }
-  return null;
-};
-
-const CustomLegend = ({ payload, labels, colors = defaultColors }: any) => {
-  if (payload && payload.length) {
-    return (
-      <Flex 
-        horizontal="start" 
-        vertical="center" 
-        position="absolute"
-        gap="16"
-        left={(labels === "y" || labels === "both") ? "80" : "12"}
-        top="12"
-      >
-        {payload.map((entry: any, index: number) => (
-          <Flex key={index} vertical="center" gap="8">
-            <Flex
-              style={{
-                backgroundClip: "padding-box",
-                border: `1px solid var(--${colors[index]})`,
-                background: `linear-gradient(to bottom, var(--${colors[index]}) 0%, transparent 100%)`
-              }}
-              minWidth="16"
-              minHeight="16"
-              radius="s"
-            />
-            <Text variant="label-default-s">
-              {entry.value}
-            </Text>
-          </Flex>
-        ))}
-      </Flex>
-    );
-  }
-  return null;
-};
 
 const LineChart: React.FC<LineChartProps> = ({
-  data,
-  series,
-  colors = defaultColors,
-  border = "neutral-medium",
   title,
   description,
-  legend = false,
-  tooltip,
-  labels = "both",
-  curveType = "natural",
-  isTimeSeries = false,
-  timeFormat,
+  data,
+  series,
+  date,
+  emptyState,
+  loading = false,
+  legend: legendProp = {},
+  axis = "both",
+  border = "neutral-medium",
+  variant: variantProp,
+  curve = "natural",
+  "data-viz-style": dataVizStyle,
   ...flex
 }) => {
-  // Auto-detect series from first data point if not provided
-  const seriesKeys = series.map(s => s.key);
-  const autoSeries = series || Object.keys(data[0] || {})
-    .filter(key => !seriesKeys.includes(key))
-    .map((key, index) => ({
-      key,
-      color: colors[index]
-    }));
+ const { 
+    variant: themeVariant, 
+    mode, 
+    height, 
+    tick: { fill: tickFill, fontSize: tickFontSize, line: tickLine },
+    axis: { stroke: axisLineStroke }
+  } = useDataTheme();
+  const variant = variantProp || themeVariant;
+  const legend = {
+    display: legendProp.display !== undefined ? legendProp.display : true,
+    position: legendProp.position || "top-left",
+    direction: legendProp.direction,
+  };
 
-  const xAxisKey = Object.keys(data[0] || {}).find(key => 
-    !seriesKeys.includes(key)
-  ) || 'name';
-  
+  const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(
+    date?.start && date?.end
+      ? {
+          startDate: date.start,
+          endDate: date.end,
+        }
+      : undefined,
+  );
+
+  useEffect(() => {
+    if (date?.start && date?.end) {
+      setSelectedDateRange({
+        startDate: date.start,
+        endDate: date.end,
+      });
+    }
+  }, [date?.start, date?.end]);
+
+  const seriesArray = Array.isArray(series) ? series : series ? [series] : [];
+  const seriesKeys = seriesArray.map((s: SeriesConfig) => s.key);
+
+  // Generate a unique ID for this chart instance
+  const chartId = React.useMemo(() => Math.random().toString(36).substring(2, 9), []);
+
+  const coloredSeriesArray = seriesArray.map((s, index) => ({
+    ...s,
+    color: s.color || getDistributedColor(index, seriesArray.length),
+  }));
+
+  const autoKeys = Object.keys(data[0] || {}).filter((key) => !seriesKeys.includes(key));
+  const autoSeries =
+    seriesArray.length > 0
+      ? coloredSeriesArray
+      : autoKeys.map((key, index) => ({
+          key,
+          color: getDistributedColor(index, autoKeys.length),
+        }));
+
+  const xAxisKey = Object.keys(data[0] || {}).find((key) => !seriesKeys.includes(key)) || "name";
+
+  const filteredData = React.useMemo(() => {
+    if (selectedDateRange?.startDate && selectedDateRange?.endDate && xAxisKey) {
+      const startDate = selectedDateRange.startDate;
+      const endDate = selectedDateRange.endDate;
+
+      if (startDate instanceof Date && endDate instanceof Date) {
+        return data.filter((item) => {
+          try {
+            const itemDateValue = item[xAxisKey];
+            if (!itemDateValue) return false;
+
+            const itemDate =
+              typeof itemDateValue === "string" ? parseISO(itemDateValue) : (itemDateValue as Date);
+
+            return isWithinInterval(itemDate, {
+              start: startDate,
+              end: endDate,
+            });
+          } catch (error) {
+            return false;
+          }
+        });
+      }
+    }
+    return data;
+  }, [data, selectedDateRange, xAxisKey]);
+
+  const handleDateRangeChange = (newRange: DateRange) => {
+    setSelectedDateRange(newRange);
+    if (date?.onChange) {
+      date.onChange(newRange);
+    }
+  };
+
   return (
-    <Flex
-      fill
-      radius="l"
-      border={border}
-      align="center"
-      data-viz="divergent"
-      horizontal="center"
-      direction="column"
-      vertical="center"
-      {...flex}
-    >
-      {title && (
-        <Column fillWidth borderBottom={border} horizontal="start" paddingX="20" paddingY="12" gap="4">
-          <Text variant="heading-strong-s">
-            {title}
-          </Text>
-          {description && (
-            <Text variant="label-default-s" onBackground="neutral-weak">
-              {description}
-            </Text>
-          )}
-        </Column>
-      )}
-      <Flex fill>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={data}
-            margin={{ left: 0, bottom: 0, top: 0, right: 0 }}
-          >
-            <defs>
-              {autoSeries.map(({ key, color }) => (
-                <linearGradient key={key} id={`color-${key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={`${color}`} stopOpacity={0.8} />
-                  <stop offset="100%" stopColor={`${color}`} stopOpacity={0} />
-                </linearGradient>
-              ))}
-            </defs>
-            <CartesianGrid
-              vertical={true}
-              stroke="var(--neutral-alpha-weak)"
-              horizontal={true}
-            />
-            {legend && (
-              <Legend
-                content={<CustomLegend colors={colors} labels={labels} />}
-                wrapperStyle={{
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  margin: 0
-                }}
-              />
-            )}
-            {(labels === "x" || labels === "both") && (
-              <XAxis
+    <Column fillWidth height={height} border={border} radius="l" data-viz-style={dataVizStyle || mode} {...flex}>
+      <ChartHeader
+        title={title}
+        description={description}
+        borderBottom={border}
+        dateRange={selectedDateRange}
+        date={date}
+        onDateRangeChange={handleDateRangeChange}
+        presets={date?.presets}
+      />
+      <Row fill>
+        <ChartStatus
+          loading={loading}
+          isEmpty={!filteredData || filteredData.length === 0}
+          emptyState={emptyState}
+        />
+        {!loading && filteredData && filteredData.length > 0 && (
+          <RechartsResponsiveContainer width="100%" height="100%">
+            <RechartsAreaChart
+              data={filteredData}
+              margin={{ left: 0, bottom: 0, top: 0, right: 0 }}
+            >
+              <defs>
+                {autoSeries.map(({ key, color }, index) => {
+                  const colorValue = color || schemes[index % schemes.length];
+                  const lineColor = `var(--data-${colorValue})`;
+                  return (
+                    <LinearGradient
+                      key={`gradient-${chartId}-${index}`}
+                      id={`barGradient${chartId}${index}`}
+                      variant={variant as ChartVariant}
+                      color={lineColor}
+                    />
+                  );
+                })}
+              </defs>
+              <RechartsCartesianGrid vertical horizontal stroke="var(--neutral-alpha-weak)" />
+              {legend.display && (
+                <RechartsLegend
+                  content={(props) => {
+                    const customPayload = autoSeries.map(({ key, color }, index) => ({
+                      value: key,
+                      color: `var(--data-${color || schemes[index % schemes.length]})`,
+                    }));
+
+                    return (
+                      <Legend
+                        payload={customPayload}
+                        labels={axis}
+                        position={legend.position}
+                        direction={legend.direction}
+                        variant={variant as ChartVariant}
+                      />
+                    );
+                  }}
+                  wrapperStyle={{
+                    position: "absolute",
+                    top:
+                      legend.position === "top-center" ||
+                      legend.position === "top-left" ||
+                      legend.position === "top-right"
+                        ? 0
+                        : undefined,
+                    bottom:
+                      legend.position === "bottom-center" ||
+                      legend.position === "bottom-left" ||
+                      legend.position === "bottom-right"
+                        ? 0
+                        : undefined,
+                    paddingBottom:
+                      legend.position === "bottom-center" ||
+                      legend.position === "bottom-left" ||
+                      legend.position === "bottom-right"
+                        ? "var(--static-space-40)"
+                        : undefined,
+                    left:
+                      (axis === "y" || axis === "both") &&
+                      (legend.position === "top-center" || legend.position === "bottom-center")
+                        ? "var(--static-space-64)"
+                        : 0,
+                    width:
+                      (axis === "y" || axis === "both") &&
+                      (legend.position === "top-center" || legend.position === "bottom-center")
+                        ? "calc(100% - var(--static-space-64))"
+                        : "100%",
+                    right: 0,
+                    margin: 0,
+                  }}
+                />
+              )}
+              <RechartsXAxis
+                height={32}
                 tickMargin={6}
                 dataKey={xAxisKey}
+                hide={!(axis === "x" || axis === "both")}
                 axisLine={{
-                  stroke: "var(--neutral-alpha-weak)",
+                  stroke: axisLineStroke,
                 }}
-                tickLine={false}
-                height={32}
+                tickLine={tickLine}
                 tick={{
-                  fill: "var(--neutral-on-background-weak)",
-                  fontSize: 11,
+                  fill: tickFill,
+                  fontSize: tickFontSize,
+                }}
+                tickFormatter={(value) => {
+                  const dataPoint = data.find((item) => item[xAxisKey] === value);
+                  return formatDate(value, date, dataPoint);
                 }}
               />
-            )}
-            {(labels === "y" || labels === "both") && (
-              <YAxis
-                allowDataOverflow
-                axisLine={{
-                  stroke: "var(--neutral-alpha-weak)",
-                }}
-                tickLine={false}
-                padding={{ top: 40 }}
-                tick={{
-                  fill: "var(--neutral-on-background-weak)",
-                  fontSize: 11,
-                }}
-                width={64}
-              />
-            )}
-            <Tooltip
-              cursor={{
-                stroke: "var(--neutral-border-strong)",
-                strokeWidth: 1,
-              }}
-              content={
-                <CustomTooltip
-                  tooltip={tooltip}
-                  isTimeSeries={isTimeSeries}
-                  timeFormat={timeFormat}
+              {(axis === "y" || axis === "both") && (
+                <RechartsYAxis
+                  width={64}
+                  padding={{ top: 40 }}
+                  allowDataOverflow
+                  tickLine={tickLine}
+                  tick={{
+                    fill: tickFill,
+                    fontSize: tickFontSize,
+                  }}
+                  axisLine={{
+                    stroke: axisLineStroke,
+                  }}
                 />
-              }
-            />
-            {autoSeries.map(({ key, color }) => (
-              <Area
-                key={key}
-                type={curveType}
-                dataKey={key}
-                name={key}
-                stroke={`var(--data-${color})`}
-                strokeWidth={1}
-                fillOpacity={1}
-                activeDot={{
-                  stroke: "var(--static-transparent)"
+              )}
+              <RechartsTooltip
+                cursor={{
+                  stroke: "var(--neutral-border-strong)",
+                  strokeWidth: 1,
                 }}
-                fill={`url(#color-${key})`}
+                content={(props) => (
+                  <DataTooltip {...props} variant={variant as ChartVariant} date={date} />
+                )}
               />
-            ))}
-          </AreaChart>
-        </ResponsiveContainer>
-      </Flex>
-    </Flex>
+              {autoSeries.map(({ key, color }, index) => {
+                const colorValue = color || schemes[index % schemes.length];
+                const lineColor = `var(--data-${colorValue})`;
+                return (
+                  <RechartsArea
+                    key={key}
+                    type={curve}
+                    dataKey={key}
+                    name={key}
+                    stroke={lineColor}
+                    transform="translate(0, -1)"
+                    fill={
+                      variant === "outline" ? "transparent" : `url(#barGradient${chartId}${index})`
+                    }
+                    activeDot={{
+                      r: 4,
+                      fill: lineColor,
+                      stroke: "var(--background)",
+                      strokeWidth: 0,
+                    }}
+                  />
+                );
+              })}
+            </RechartsAreaChart>
+          </RechartsResponsiveContainer>
+        )}
+      </Row>
+    </Column>
   );
 };
 
