@@ -202,7 +202,7 @@ async function trackUserEmails(
     // Get email logs that need tracking
     const { data: emailLogs, error: emailsError } = await supabase
       .from('email_logs')
-      .select('id, tracking_id, student_id, sent_at, status, pending_email_id, created_at')
+      .select('id, tracking_id, gmail_thread_id, student_id, sent_at, status, pending_email_id, created_at')
       .eq('student_id', userId)
       .or('status.is.null,status.eq.sent')
       .order('created_at', { ascending: false })
@@ -229,7 +229,8 @@ async function trackUserEmails(
     // Define email log type based on the email_logs table schema
     interface EmailLog {
       id: string;
-      tracking_id: string;  // This is the Gmail thread ID
+      tracking_id: string;  // Custom tracking ID for pixel tracking
+      gmail_thread_id: string | null;  // Gmail thread ID for response tracking
       student_id: string;
       pending_email_id: string | null;  // Reference to pending_emails table
       sent_at: string;
@@ -249,53 +250,16 @@ async function trackUserEmails(
         try {
           await rateLimiter.wait();
           
-          // Skip if no tracking_id is available (which is the Gmail thread ID)
-          if (!email.tracking_id) {
-            console.log(`[${userId}] [OLD_EMAIL] Email ${email.id} has no tracking_id - marking as legacy`);
-            try {
-              const { error: updateError } = await supabase
-                .from('email_logs')
-                .update({ status: 'legacy' })
-                .eq('id', email.id);
-              
-              if (updateError) {
-                console.error(`[${userId}] Failed to mark email ${email.id} as legacy:`, updateError);
-                return { success: false, error: 'Failed to mark as legacy' };
-              }
-              console.log(`[${userId}] Successfully marked email ${email.id} as legacy`);
-              return { success: true, processed: 1, updated: 0, status: 'marked_as_legacy' };
-            } catch (error) {
-              console.error(`[${userId}] Error marking email ${email.id} as legacy:`, error);
-              return { success: false, error: 'Error marking as legacy' };
-            }
+          // Skip if no gmail_thread_id is available for response tracking
+          if (!email.gmail_thread_id) {
+            console.log(`[${userId}] Email ${email.id} has no gmail_thread_id - cannot track responses`);
+            return { success: true, processed: 1, updated: 0, status: 'no_thread_id' };
           }
           
-          // Check if this is a new-style tracking ID (Gmail thread ID)
-          const isNewStyleId = !email.tracking_id.includes('-');
-          if (!isNewStyleId) {
-            console.log(`[${userId}] [OLD_EMAIL] Email ${email.id} has old-style tracking ID: ${email.tracking_id} - marking as legacy`);
-            try {
-              const { error: updateError } = await supabase
-                .from('email_logs')
-                .update({ status: 'legacy' })
-                .eq('id', email.id);
-              
-              if (updateError) {
-                console.error(`[${userId}] Failed to mark email ${email.id} as legacy:`, updateError);
-                return { success: false, error: 'Failed to mark as legacy' };
-              }
-              console.log(`[${userId}] Successfully marked email ${email.id} as legacy`);
-              return { success: true, processed: 1, updated: 0, status: 'marked_as_legacy' };
-            } catch (error) {
-              console.error(`[${userId}] Error marking email ${email.id} as legacy:`, error);
-              return { success: false, error: 'Error marking as legacy' };
-            }
-          }
-          
-          console.log(`[${userId}] [NEW_EMAIL] Checking replies for email ${email.id} with Gmail thread ID: ${email.tracking_id}`);
+          console.log(`[${userId}] [NEW_EMAIL] Checking replies for email ${email.id} with Gmail thread ID: ${email.gmail_thread_id}`);
           let hasReplied = false;
           try {
-            hasReplied = await hasReplies(accessToken, email.tracking_id, userId);
+            hasReplied = await hasReplies(accessToken, email.gmail_thread_id, userId);
           } catch (error) {
             console.error(`[${userId}] [ERROR] Failed to check replies for email ${email.id}:`, error);
             // Mark as error so we can retry later
