@@ -134,6 +134,8 @@ async function generatePersonalizedEmailWithResume(
   // Compose a prompt for Gemini to write a fully personalized, natural email
   let promptText = `
   You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor.
+
+  Whatever you generate are final emails sent to proffessors, so you must be careful not to have any placeholders or instructions in the email.
   
   Student Information:
   - Name: ${studentInfo.name}
@@ -382,7 +384,112 @@ async function getValidGmailAccessToken(supabase: any, userId: string): Promise<
   return access_token;
 }
 
-const BATCH_SIZE = 10; // Number of emails to process per invocation
+// Rate limiting utility
+const rateLimitedMap = async <T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> => {
+  const results: R[] = [];
+  const executing: Promise<void>[] = [];
+  let index = 0;
+
+  while (index < items.length) {
+    const item = items[index++];
+    const p = Promise.resolve().then(() => fn(item)).then(result => {
+      results.push(result);
+    });
+    executing.push(p);
+
+    if (executing.length >= concurrency) {
+      await Promise.race(executing);
+    }
+  }
+
+
+  await Promise.all(executing);
+  return results;
+};
+
+// Rate limiting configuration
+const REQUESTS_PER_MINUTE_PER_KEY = 15; // Gemini API rate limit per key
+const TOKENS_PER_MINUTE = REQUESTS_PER_MINUTE_PER_KEY * 5; // 5 keys
+const TOKENS_PER_SECOND = TOKENS_PER_MINUTE / 60;
+const BUCKET_SIZE = TOKENS_PER_MINUTE * 2; // Allow for bursts
+
+// Token bucket state
+let tokens = BUCKET_SIZE;
+let lastRefillTime = Date.now();
+
+// Request tracking
+let activeRequests = 0;
+const requestTimestamps: Record<string, number[]> = {}; // key -> timestamps
+
+// Rate limiter using token bucket algorithm
+async function rateLimitedRequest<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  
+  // Refill tokens based on time passed
+  const timePassed = (now - lastRefillTime) / 1000; // in seconds
+  tokens = Math.min(BUCKET_SIZE, tokens + (timePassed * TOKENS_PER_SECOND));
+  lastRefillTime = now;
+
+  // Initialize request tracking for this key
+  if (!requestTimestamps[key]) {
+    requestTimestamps[key] = [];
+  }
+  
+  // Clean up old timestamps (older than 1 minute)
+  const oneMinuteAgo = now - 60000;
+  requestTimestamps[key] = requestTimestamps[key].filter(ts => ts > oneMinuteAgo);
+  
+  // Calculate wait time if we're at the limit
+  const currentRpm = requestTimestamps[key].length;
+  if (currentRpm >= REQUESTS_PER_MINUTE_PER_KEY) {
+    const oldestRequest = requestTimestamps[key][0];
+    const timeToWait = 60000 - (now - oldestRequest);
+    if (timeToWait > 0) {
+      console.log(`[RATE_LIMIT] Waiting ${timeToWait}ms for key ${key} (${currentRpm} RPM)`);
+      await new Promise(resolve => setTimeout(resolve, timeToWait));
+    }
+  }
+
+  // Wait if we don't have enough tokens
+  while (tokens < 1) {
+    const timeToWait = Math.ceil((1 - tokens) / TOKENS_PER_SECOND * 1000);
+    console.log(`[RATE_LIMIT] Waiting ${timeToWait}ms for token refill (${tokens.toFixed(2)} tokens available)`);
+    await new Promise(resolve => setTimeout(resolve, timeToWait));
+    
+    // Update tokens after waiting
+    const now = Date.now();
+    const timePassed = (now - lastRefillTime) / 1000;
+    tokens = Math.min(BUCKET_SIZE, tokens + (timePassed * TOKENS_PER_SECOND));
+    lastRefillTime = now;
+  }
+
+  // Deduct a token and make the request
+  tokens--;
+  requestTimestamps[key].push(Date.now());
+  activeRequests++;
+  
+  try {
+    const startTime = Date.now();
+    console.log(`[REQUEST_START] Key: ${key}, Active: ${activeRequests}, Tokens: ${tokens.toFixed(2)}`);
+    
+    const result = await fn();
+    
+    const duration = Date.now() - startTime;
+    console.log(`[REQUEST_END] Key: ${key}, Duration: ${duration}ms, Active: ${activeRequests}, Tokens: ${tokens.toFixed(2)}`);
+    
+    return result;
+  } finally {
+    activeRequests--;
+  }
+}
+
+// Batch processing configuration
+const MAX_CONCURRENT_PER_KEY = 2; // Conservative concurrency per key
+const BATCH_SIZE = 15; // Total across all keys
 
 serve(async (_req: Request) => {
   console.log("[process-pending-emails] Function invoked");
@@ -417,9 +524,10 @@ serve(async (_req: Request) => {
       emailsByKey[key].push(email);
     });
     
+    // Process emails with rate limiting per API key
     await Promise.all(apiKeys.map(async (key) => {
       const jobs = emailsByKey[key] || [];
-      await Promise.all(jobs.map(async (emailJob: { campaign_id: any; professor_name: any; professor_email: string; university: any; department: any; research_areas: any[]; id: any; }) => {
+      return rateLimitedMap(jobs, MAX_CONCURRENT_PER_KEY, async (emailJob: { campaign_id: any; professor_name: any; professor_email: string; university: any; department: any; research_areas: any[]; id: any; }) => {
         processedCampaignIds.add(emailJob.campaign_id);
         try {
           // Extract and prepare info
@@ -450,18 +558,20 @@ serve(async (_req: Request) => {
           const studentEmail = userInfo?.email || "";
           const accessToken = await getValidGmailAccessToken(supabase, campaign.user_id);
     
-          const personalizedEmail = await generatePersonalizedEmailWithResume(
-            {
-              name: emailJob.professor_name,
-              email: emailJob.professor_email,
-              university: emailJob.university,
-              department: emailJob.department,
-              researchAreas: emailJob.research_areas,
-            },
-            studentProfile?.resume_url || null,
-            key,
-            supabase,
-            { name: studentName, email: studentEmail }
+          const personalizedEmail = await rateLimitedRequest(key, () => 
+            generatePersonalizedEmailWithResume(
+              {
+                name: emailJob.professor_name,
+                email: emailJob.professor_email,
+                university: emailJob.university,
+                department: emailJob.department,
+                researchAreas: emailJob.research_areas,
+              },
+              studentProfile?.resume_url || null,
+              key,
+              supabase,
+              { name: studentName, email: studentEmail }
+            )
           );
     
           const emailSubject = `Research Opportunity Inquiry - ${emailJob.research_areas?.[0] || "Research"}`;
@@ -477,13 +587,26 @@ serve(async (_req: Request) => {
                                     'Content-Type: text/html; charset=utf-8\n\n' +
                                     `<div style="white-space: pre-wrap;">${personalizedEmail.replace(/\n/g, '<br>')}</div>`;
     
-          const sendResponse = await sendEmail(accessToken, emailJob.professor_email, emailSubject, emailWithTracking);
-          const trackingId = sendResponse.threadId;
+          // Generate a unique tracking ID for the pixel
+          const trackingId = `trk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           const trackingPixelUrl = `${new URL(supabaseUrl).origin}/functions/v1/track-email-pixel?id=${trackingId}`;
           const emailWithPixel = emailWithTracking.replace('</div>', `</div><img src="${trackingPixelUrl}" alt="" width="1" height="1" style="display:none;" />`);
     
-          await sendEmail(accessToken, emailJob.professor_email, emailSubject, emailWithPixel);
-          await supabase.from("pending_emails").update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", emailJob.id);
+          // Send the email and get the Gmail thread ID
+          const sendResponse = await sendEmail(accessToken, emailJob.professor_email, emailSubject, emailWithPixel);
+          const gmailThreadId = sendResponse.threadId;
+          
+          if (!gmailThreadId) {
+            throw new Error('Failed to get Gmail thread ID from send response');
+          }
+          
+          // Update the database with both tracking IDs
+          await supabase.from("pending_emails").update({ 
+            status: "sent", 
+            sent_at: new Date().toISOString(), 
+            updated_at: new Date().toISOString() 
+          }).eq("id", emailJob.id);
+          
           await supabase.from("email_logs").insert({
             campaign_id: emailJob.campaign_id,
             student_id: campaign.user_id,
@@ -491,21 +614,24 @@ serve(async (_req: Request) => {
             sent_at: new Date().toISOString(),
             status: "sent",
             open_count: 0,
-            tracking_id: trackingId,
+            tracking_id: trackingId,        // Our custom tracking ID for the pixel
+            gmail_thread_id: gmailThreadId, // Gmail's thread ID for response tracking
             updated_at: new Date().toISOString(),
             created_at: new Date().toISOString(),
           });
+          
+          return { success: true, emailJobId: emailJob.id };
     
         } catch (err) {
           await supabase
             .from("pending_emails")
             .update({ status: "failed", error_message: err instanceof Error ? err.message : "Unknown error", updated_at: new Date().toISOString() })
             .eq("id", emailJob.id);
+          return { success: false, emailJobId: emailJob.id, error: err };
         }
-      }));
+      });
     }));
-    
-    
+
     // After processing, check for each campaign if all emails are done, and call finalize-campaign if so
     for (const campaignId of processedCampaignIds) {
       // Check if any pending emails remain for this campaign
@@ -522,13 +648,13 @@ serve(async (_req: Request) => {
             headers: {
               "Authorization": `Bearer ${supabaseAnonKey}`
             },
-            body: JSON.stringify({ campaignId }),
+            body: JSON.stringify({ campaignId })
           });
         } catch (finalizeError) {
           console.error(`[finalize-campaign] Error finalizing campaign ${campaignId}:`, finalizeError);
         }
       }
-    }
+    }   
     return new Response(JSON.stringify({ success: true, processed: pendingEmails.length }), {
       headers: { "Content-Type": "application/json" },
     });
