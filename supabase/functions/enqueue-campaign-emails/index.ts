@@ -5,7 +5,119 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const geminiApiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
 
+// Common words to exclude from keyword extraction
+const STOP_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'for', 'nor', 'with', 'in', 'on', 'at', 
+  'to', 'from', 'by', 'of', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
+  'can', 'may', 'might', 'must', 'shall', 'for', 'to', 'from', 'with', 'about',
+  'into', 'through', 'during', 'before', 'after', 'above', 'below', 'under', 'over',
+  'between', 'among', 'throughout', 'while', 'whereas', 'although', 'though', 'if',
+  'unless', 'until', 'when', 'whenever', 'where', 'wherever', 'whether', 'which',
+  'while', 'who', 'whom', 'whose', 'that', 'this', 'these', 'those'
+]);
+
+// Extract meaningful keywords from a string
+function extractKeywords(text: string): string[] {
+  if (!text) return [];
+  
+  // Convert to lowercase and split into words
+  const words = text.toLowerCase()
+    .replace(/[^\w\s-]/g, ' ')  // Remove punctuation
+    .split(/\s+/);
+  
+  // Filter out stop words and short words
+  return Array.from(new Set(words
+    .filter(word => 
+      word.length > 2 && 
+      !STOP_WORDS.has(word) &&
+      !/^\d+$/.test(word)
+    )
+  ));
+}
+
+// Extract keywords from an array of research interests
+function getSearchKeywords(interests: string[]): string[] {
+  if (!interests || !Array.isArray(interests)) return [];
+  
+  return Array.from(new Set(
+    interests.flatMap(interest => {
+      // First try to split by common delimiters if they exist
+      const parts = interest.split(/[,\n\t;]|\band\b|\bor\b/);
+      
+      // If we have multiple parts, process each one
+      if (parts.length > 1) {
+        return parts.flatMap(part => extractKeywords(part));
+      }
+      
+      // Otherwise process the whole string
+      return extractKeywords(interest);
+    })
+  )).filter(Boolean);
+}
+
+// Feature flag to enable/disable scraped professors
+const USE_SCRAPED_PROFESSORS = true;
+// Percentage of emails to get from scraped professors (0-100)
+const SCRAPED_PROFESSORS_RATIO = 0.5; // 50% from scraped, 50% from Gemini
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Find professors using semantic search with Supabase's built-in embeddings
+async function findProfessorsWithSemanticSearch(
+  interests: string[],
+  universities: string[] = [],
+  limit: number
+): Promise<Array<{
+  name: string;
+  email: string;
+  university: string;
+  department: string;
+  researchAreas: string[];
+  similarity?: number;
+}>> {
+  try {
+    // Generate embedding for the search query
+    const searchText = interests.join(' ');
+    const model = new Supabase.ai.Session('gte-small');
+    const embedding = await model.run(searchText, {
+      mean_pool: true,
+      normalize: true,
+    });
+
+    if (!embedding) {
+      console.error('Failed to generate embedding for search query');
+      return [];
+    }
+
+    // Call the Supabase RPC function for vector search
+    const { data: professors, error } = await supabase.rpc('query_scraped_professors', {
+      embedding: embedding,
+      match_count: limit,
+      match_threshold: 0.5, // Adjust threshold as needed (0-1, higher is more strict)
+    });
+
+    if (error) {
+      console.error('Error in semantic search:', error);
+      return [];
+    }
+
+    console.log(`Found ${professors.length} professors using semantic search`);
+
+    // Transform to match the expected format
+    return professors.map((p: any) => ({
+      name: p.name || 'Professor',
+      email: p.email,
+      university: p.university || 'Unknown University',
+      department: p.department || 'Unknown Department',
+      researchAreas: p.research_topics || [],
+      similarity: p.similarity
+    }));
+  } catch (error) {
+    console.error('Error in findProfessorsWithSemanticSearch:', error);
+    return [];
+  }
+}
 
 // Gemini API call helper (v1beta endpoint and body)
 async function callGemini(prompt: string): Promise<string> {
@@ -140,6 +252,135 @@ async function findProfessorsWithGemini(interests: string[], universities: strin
   }
 }
 
+// Find professors from the scraped_professors table with semantic search fallback to keyword search
+async function findProfessorsFromScraper(
+  interests: string[],
+  universities: string[] = [],
+  limit: number
+): Promise<Array<{
+  name: string;
+  email: string;
+  university: string;
+  department: string;
+  researchAreas: string[];
+}>> {
+  // First try semantic search
+  try {
+    console.log('[findProfessorsFromScraper] Attempting semantic search...');
+    const semanticResults = await findProfessorsWithSemanticSearch(interests, universities, limit);
+    
+    if (semanticResults.length > 0) {
+      console.log(`[findProfessorsFromScraper] Found ${semanticResults.length} professors using semantic search`);
+      return semanticResults;
+    }
+  } catch (semanticError) {
+    console.warn('[findProfessorsFromScraper] Semantic search failed, falling back to keyword search:', semanticError);
+  }
+
+  // Fall back to keyword search if semantic search returns no results or fails
+  console.log('[findProfessorsFromScraper] Falling back to keyword search');
+  try {
+    // Build the base query
+    let query = supabase
+      .from('scraped_professors')
+      .select('*')
+      .limit(limit);
+
+    // Prepare search conditions
+    const searchConditions: string[] = [];
+    
+    // Add search conditions for research interests if provided
+    if (interests && interests.length > 0) {
+      // Extract meaningful keywords from the interests
+      const keywords = getSearchKeywords(interests);
+      console.log('[findProfessorsFromScraper] Extracted keywords:', keywords);
+      
+      if (keywords.length === 0) {
+        console.log('[findProfessorsFromScraper] No valid keywords extracted from interests');
+        return [];
+      }
+      
+      // For each keyword, create conditions that search in:
+      // 1. research_topics array (case-insensitive partial match)
+      // 2. summary text (case-insensitive partial match)
+      // 3. department name (case-insensitive partial match)
+      keywords.forEach(keyword => {
+        // Skip very short keywords
+        if (keyword.length < 3) return;
+        
+        // Escape special characters in the keyword for the query
+        const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // Search in research_topics array (case-insensitive partial match)
+        searchConditions.push(`research_topics.cs.{*${escapedKeyword}*}`);
+        
+        // Search in summary text (case-insensitive partial match)
+        searchConditions.push(`summary.ilike.%${escapedKeyword}%`);
+        
+        // Search in department name (case-insensitive partial match)
+        searchConditions.push(`department.ilike.%${escapedKeyword}%`);
+      });
+      
+      console.log('[findProfessorsFromScraper] Generated search conditions:', searchConditions);
+      
+      // Use 'or' to match any of the keywords in any field
+      if (searchConditions.length > 0) {
+        query = query.or(searchConditions.join(','));
+      } else {
+        console.log('[findProfessorsFromScraper] No valid search conditions after keyword processing');
+        return [];
+      }
+    }
+
+    // Add university filter if provided (case-insensitive partial match)
+    if (universities && universities.length > 0) {
+      const uniConditions = universities.map(uni => 
+        `university.ilike.%${uni}%`
+      );
+      query = query.or(uniConditions.join(','));
+    }
+
+    console.log('[findProfessorsFromScraper] Executing keyword query with filters');
+    
+    // Execute the query
+    const { data: professors, error } = await query;
+    
+    console.log(`[findProfessorsFromScraper] Keyword query returned ${professors?.length || 0} results`);
+
+    if (error) {
+      console.error('[findProfessorsFromScraper] Error querying scraped professors:', error);
+      return [];
+    }
+
+    if (!professors || professors.length === 0) {
+      console.log('[findProfessorsFromScraper] No professors found matching the criteria');
+      return [];
+    }
+
+    // Define the professor type from the database
+    interface ScrapedProfessor {
+      name: string | null;
+      email: string;
+      university: string | null;
+      department: string | null;
+      research_topics: string[] | null;
+      summary?: string | null;
+    }
+
+    // Transform the data to match the expected format
+    return (professors as ScrapedProfessor[]).map(prof => ({
+      name: prof.name || 'Professor',
+      email: prof.email,
+      university: prof.university || 'Unknown University',
+      department: prof.department || 'Unknown Department',
+      researchAreas: prof.research_topics || []
+    }));
+  } catch (error) {
+    console.error('[findProfessorsFromScraper] Unexpected error in keyword search:', error);
+    return [];
+  }
+}
+
 // Modified main function to use OpenAlex first, then Gemini as fallback
 serve(async (req: Request) => {
   const startTime = Date.now();
@@ -168,19 +409,58 @@ serve(async (req: Request) => {
       throw new Error(`Failed to fetch campaign: ${campaignError.message}`);
     }
     console.log(`[enqueue-campaign-emails] Campaign loaded:`, campaign);
-    // Find professors (OpenAlex first, fallback to Gemini)
-    let professors = [];
-       professors = await findProfessorsWithGemini(
-        campaign.research_interests,
-        campaign.target_universities,
-        campaign.max_emails
-      );
-      console.log('[enqueue-campaign-emails] Professors found with Gemini:', professors);
+    // Find professors from multiple sources
+    let professors: Array<{
+      name: string;
+      email: string;
+      university: string;
+      department: string;
+      researchAreas: string[];
+    }> = [];
     
-    if (!professors || professors.length === 0) {
-      throw new Error('No professors found with Gemini');
+    // Calculate how many professors to get from each source
+    const maxFromScraper = Math.floor(campaign.max_emails * SCRAPED_PROFESSORS_RATIO);
+    const maxFromGemini = campaign.max_emails - maxFromScraper;
+    
+    // Get professors from scraper if enabled
+    if (USE_SCRAPED_PROFESSORS && maxFromScraper > 0) {
+      try {
+        const scrapedProfessors = await findProfessorsFromScraper(
+          campaign.research_interests,
+          campaign.target_universities,
+          maxFromScraper
+        );
+        professors = [...professors, ...scrapedProfessors];
+        console.log(`[enqueue-campaign-emails] Found ${scrapedProfessors.length} professors from scraper`);
+      } catch (error) {
+        console.error('[enqueue-campaign-emails] Error getting professors from scraper:', error);
+        // Continue with Gemini if scraper fails
+      }
     }
-    console.log(`[enqueue-campaign-emails] Found ${professors.length} professors to process`);
+    
+    // Get remaining professors from Gemini
+    if (maxFromGemini > 0) {
+      try {
+        const geminiProfessors = await findProfessorsWithGemini(
+          campaign.research_interests,
+          campaign.target_universities,
+          maxFromGemini
+        );
+        professors = [...professors, ...geminiProfessors];
+        console.log(`[enqueue-campaign-emails] Found ${geminiProfessors.length} professors from Gemini`);
+      } catch (error) {
+        console.error('[enqueue-campaign-emails] Error getting professors from Gemini:', error);
+        if (professors.length === 0) {
+          throw new Error('Failed to find professors from any source');
+        }
+      }
+    }
+    
+    if (professors.length === 0) {
+      throw new Error('No professors found from any source');
+    }
+    
+    console.log(`[enqueue-campaign-emails] Found total of ${professors.length} professors to process`);
 
     // Prevent duplicate outreach: get all professor emails already contacted by this user in their campaigns
     const { data: userCampaigns, error: userCampaignsError } = await supabase

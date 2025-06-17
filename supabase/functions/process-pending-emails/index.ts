@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -30,8 +29,19 @@ interface Campaign {
   status: string;
 }
 
-async function callGemini(prompt: string): Promise<string> {
-  const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + geminiApiKey;
+function getNextModel(currentModel: string): string | undefined {
+  const modelChain: Record<string, string> = {
+    'gemini-2.0-flash': 'gemini-2.5-flash-preview-05-20',
+    'gemini-2.5-flash-preview-05-20': 'gemini-2.0-flash-exp',
+    'gemini-2.0-flash-exp': 'gemini-2.5-pro-preview-06-05',
+    'gemini-2.5-pro-preview-06-05': 'gemini-2.0-flash-lite',
+    'gemini-2.0-flash-lite': 'gemini-1.5-pro'
+  };
+  return modelChain[currentModel];
+}
+
+async function callGemini(prompt: string, model: string = 'gemini-2.0-flash'): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
   const body = {
     contents: [
       {
@@ -39,17 +49,42 @@ async function callGemini(prompt: string): Promise<string> {
       }
     ]
   };
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Gemini API error: ${res.status} ${res.statusText} - ${errorText}`);
+  
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      
+      // If rate limited, try the next model in the chain
+      if (res.status === 429) {
+        const nextModel = getNextModel(model);
+        if (nextModel) {
+          console.log(`Rate limited on ${model}, falling back to ${nextModel}`);
+          return callGemini(prompt, nextModel);
+        }
+      }
+      
+      throw new Error(`Gemini API error (${model}): ${res.status} ${res.statusText} - ${errorText}`);
+    }
+    
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  } catch (error) {
+    // If it's a rate limit error, try the next model
+    if (error instanceof Error && error.message.includes('429')) {
+      const nextModel = getNextModel(model);
+      if (nextModel) {
+        console.log(`Error with ${model}, falling back to ${nextModel}`);
+        return callGemini(prompt, nextModel);
+      }
+    }
+    throw error;
   }
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
 
 // Real Gemini-powered personalized email generation
@@ -90,38 +125,78 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-async function uploadPdfToGeminiFileApi(pdfBuffer: ArrayBuffer, displayName: string, geminiApiKey: string): Promise<string> {
+async function uploadPdfToGeminiFileApi(pdfBuffer: ArrayBuffer, displayName: string, geminiApiKey: string, model: string = 'gemini-2.0-flash'): Promise<string> {
   const BASE_URL = "https://generativelanguage.googleapis.com";
   const numBytes = pdfBuffer.byteLength;
-  // Start resumable upload
-  const startRes = await fetch(`${BASE_URL}/upload/v1beta/files?key=${geminiApiKey}`, {
-    method: "POST",
-    headers: {
-      "X-Goog-Upload-Protocol": "resumable",
-      "X-Goog-Upload-Command": "start",
-      "X-Goog-Upload-Header-Content-Length": numBytes.toString(),
-      "X-Goog-Upload-Header-Content-Type": "application/pdf",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ file: { display_name: displayName } }),
-  });
-  if (!startRes.ok) throw new Error("Failed to start Gemini file upload");
-  const uploadUrl = startRes.headers.get("x-goog-upload-url");
-  if (!uploadUrl) throw new Error("No upload URL from Gemini");
-  // Upload the PDF bytes
-  const uploadRes = await fetch(uploadUrl, {
-    method: "POST",
-    headers: {
-      "Content-Length": numBytes.toString(),
-      "X-Goog-Upload-Offset": "0",
-      "X-Goog-Upload-Command": "upload, finalize",
-    },
-    body: pdfBuffer,
-  });
-  if (!uploadRes.ok) throw new Error("Failed to upload PDF to Gemini");
-  const fileInfo = await uploadRes.json();
-  if (!fileInfo.file?.uri) throw new Error("No file_uri returned from Gemini");
-  return fileInfo.file.uri;
+  
+  try {
+    // Start resumable upload
+    const startRes = await fetch(`${BASE_URL}/upload/v1beta/files?key=${geminiApiKey}`, {
+      method: "POST",
+      headers: {
+        "X-Goog-Upload-Protocol": "resumable",
+        "X-Goog-Upload-Command": "start",
+        "X-Goog-Upload-Header-Content-Length": numBytes.toString(),
+        "X-Goog-Upload-Header-Content-Type": "application/pdf",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ file: { display_name: displayName } }),
+    });
+
+    if (!startRes.ok) {
+      const errorText = await startRes.text();
+      // If rate limited, try the next model in the chain
+      if (startRes.status === 429) {
+        const nextModel = getNextModel(model);
+        if (nextModel) {
+          console.log(`Rate limited on ${model} file upload, falling back to ${nextModel}`);
+          return uploadPdfToGeminiFileApi(pdfBuffer, displayName, geminiApiKey, nextModel);
+        }
+      }
+      throw new Error(`Failed to start Gemini file upload: ${startRes.status} ${startRes.statusText} - ${errorText}`);
+    }
+
+    const uploadUrl = startRes.headers.get("x-goog-upload-url");
+    if (!uploadUrl) throw new Error("No upload URL from Gemini");
+    
+    // Upload the PDF bytes
+    const uploadRes = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "Content-Length": numBytes.toString(),
+        "X-Goog-Upload-Offset": "0",
+        "X-Goog-Upload-Command": "upload, finalize",
+      },
+      body: pdfBuffer,
+    });
+
+    if (!uploadRes.ok) {
+      const errorText = await uploadRes.text();
+      // If rate limited, try the next model in the chain
+      if (uploadRes.status === 429) {
+        const nextModel = getNextModel(model);
+        if (nextModel) {
+          console.log(`Rate limited on ${model} file upload, falling back to ${nextModel}`);
+          return uploadPdfToGeminiFileApi(pdfBuffer, displayName, geminiApiKey, nextModel);
+        }
+      }
+      throw new Error(`Failed to upload PDF to Gemini: ${uploadRes.status} ${uploadRes.statusText} - ${errorText}`);
+    }
+
+    const fileInfo = await uploadRes.json();
+    if (!fileInfo.file?.uri) throw new Error("No file_uri returned from Gemini");
+    return fileInfo.file.uri;
+  } catch (error) {
+    // If it's a rate limit error, try the next model
+    if (error instanceof Error && error.message.includes('429')) {
+      const nextModel = getNextModel(model);
+      if (nextModel) {
+        console.log(`Error with ${model} file upload, falling back to ${nextModel}`);
+        return uploadPdfToGeminiFileApi(pdfBuffer, displayName, geminiApiKey, nextModel);
+      }
+    }
+    throw error;
+  }
 }
 
 async function generatePersonalizedEmailWithResume(
@@ -154,6 +229,7 @@ async function generatePersonalizedEmailWithResume(
   Strict requirements:
   - Email needs to be short and concise, clearly label the ask and what the student can offer, offer data analysis help and show your not dead weight.
   - Do NOT leave any template language, placeholders, or instructions in the email.
+  - The recipient wont see the resume attached, so do not directly reference it and dont say stuff like "as you can see" or "as you can see in my resume". 
   - Fill in every field with real, specific details from the resume and the professor's research.
   - Use clean whitespace and bullet points where appropriate.
   - Researchers are busy, so make your email short and to the point.
@@ -188,34 +264,64 @@ async function generatePersonalizedEmailWithResume(
     if (!textRes.ok) throw new Error(`Failed to fetch text resume: ${textRes.status} ${textRes.statusText}`);
     const resumeText = await textRes.text();
     console.log('DEBUG: resumeText preview:', resumeText.slice(0, 200));
+    
     if (contentType.toLowerCase().includes("charset=utf-8")) {
       // If resume is UTF-8, base64 encode and send as inline_data
       const base64Text = utf8ToBase64(resumeText);
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-      const body = {
-        contents: [
-          {
-            parts: [
-              { inline_data: { mime_type: "text/plain", data: base64Text } },
-              { text: promptText }
-            ]
+      const model = 'gemini-2.0-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+      
+      // Create a function that can be retried with different models
+      const generateWithRetry = async (currentModel: string = model): Promise<string> => {
+        const modelUrl = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+        const body = {
+          contents: [
+            {
+              parts: [
+                { inline_data: { mime_type: "text/plain", data: base64Text } },
+                { text: promptText }
+              ]
+            }
+          ]
+        };
+        
+        try {
+          const res = await fetch(modelUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          
+          if (!res.ok) {
+            if (res.status === 429) {
+              const nextModel = getNextModel(currentModel);
+              if (nextModel) {
+                console.log(`Rate limited on ${currentModel}, falling back to ${nextModel}`);
+                return generateWithRetry(nextModel);
+              }
+            }
+            const errorText = await res.text();
+            throw new Error(`Gemini API error (text inline): ${res.status} ${res.statusText} - ${errorText}`);
           }
-        ]
+          
+          const data = await res.json();
+          return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('429')) {
+            const nextModel = getNextModel(currentModel);
+            if (nextModel) {
+              console.log(`Error with ${currentModel}, falling back to ${nextModel}`);
+              return generateWithRetry(nextModel);
+            }
+          }
+          throw error;
+        }
       };
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Gemini API error (text inline): ${res.status} ${res.statusText} - ${errorText}`);
-      }
-      const data = await res.json();
-      const email = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      const email = await generateWithRetry();
       return postProcessStudentPlaceholders(email, studentInfo);
     } else {
-      // Otherwise, send as plain text in the prompt
+      // For non-UTF-8 text, include directly in the prompt
       const textPrompt = `${promptText}\n\n---\n\nStudent Resume (plain text):\n${resumeText}\n\n---\n`;
       const email = await callGemini(textPrompt);
       return postProcessStudentPlaceholders(email, studentInfo);
@@ -224,56 +330,108 @@ async function generatePersonalizedEmailWithResume(
   // Download the PDF (default/fallback)
   const pdfBuffer = await fetchFileAsArrayBuffer(publicResumeUrl);
   const pdfSize = pdfBuffer.byteLength;
-  if (pdfSize < 20 * 1024 * 1024) { // <20MB
+  
+  if (pdfSize < 20 * 1024 * 1024) { // <20MB - Use inline PDF
     const base64Pdf = arrayBufferToBase64(pdfBuffer);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-    const body = {
-      contents: [
-        {
-          parts: [
-            { inline_data: { mime_type: "application/pdf", data: base64Pdf } },
-            { text: promptText }
-          ]
+    
+    const generateWithRetry = async (currentModel: string = 'gemini-2.0-flash'): Promise<string> => {
+      const modelUrl = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+      const body = {
+        contents: [
+          {
+            parts: [
+              { inline_data: { mime_type: "application/pdf", data: base64Pdf } },
+              { text: promptText }
+            ]
+          }
+        ]
+      };
+      
+      try {
+        const res = await fetch(modelUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        
+        if (!res.ok) {
+          if (res.status === 429) {
+            const nextModel = getNextModel(currentModel);
+            if (nextModel) {
+              console.log(`Rate limited on ${currentModel}, falling back to ${nextModel}`);
+              return generateWithRetry(nextModel);
+            }
+          }
+          const errorText = await res.text();
+          throw new Error(`Gemini API error (PDF inline): ${res.status} ${res.statusText} - ${errorText}`);
         }
-      ]
+        
+        const data = await res.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('429')) {
+          const nextModel = getNextModel(currentModel);
+          if (nextModel) {
+            console.log(`Error with ${currentModel}, falling back to ${nextModel}`);
+            return generateWithRetry(nextModel);
+          }
+        }
+        throw error;
+      }
     };
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Gemini API error (PDF inline): ${res.status} ${res.statusText} - ${errorText}`);
-    }
-    const data = await res.json();
-    const email = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    
+    const email = await generateWithRetry();
     return postProcessStudentPlaceholders(email, studentInfo);
   } else {
-    // Use File API for large PDFs
-    const fileUri = await uploadPdfToGeminiFileApi(pdfBuffer, "student_resume.pdf", geminiApiKey);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-    const body = {
-      contents: [
-        {
-          parts: [
-            { text: promptText },
-            { file_data: { mime_type: "application/pdf", file_uri: fileUri } }
+    // For large PDFs (>20MB), use File API
+    const generateWithRetry = async (currentModel: string = 'gemini-2.0-flash'): Promise<string> => {
+      try {
+        const fileUri = await uploadPdfToGeminiFileApi(pdfBuffer, "student_resume.pdf", geminiApiKey, currentModel);
+        const modelUrl = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`;
+        const body = {
+          contents: [
+            {
+              parts: [
+                { text: promptText },
+                { file_data: { mime_type: "application/pdf", file_uri: fileUri } }
+              ]
+            }
           ]
+        };
+        
+        const res = await fetch(modelUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        
+        if (!res.ok) {
+          if (res.status === 429) {
+            const nextModel = getNextModel(currentModel);
+            if (nextModel) {
+              console.log(`Rate limited on ${currentModel}, falling back to ${nextModel}`);
+              return generateWithRetry(nextModel);
+            }
+          }
+          const errorText = await res.text();
+          throw new Error(`Gemini API error (PDF file): ${res.status} ${res.statusText} - ${errorText}`);
         }
-      ]
+        
+        const data = await res.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('429')) {
+          const nextModel = getNextModel(currentModel);
+          if (nextModel) {
+            console.log(`Error with ${currentModel}, falling back to ${nextModel}`);
+            return generateWithRetry(nextModel);
+          }
+        }
+        throw error;
+      }
     };
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Gemini API error (PDF file): ${res.status} ${res.statusText} - ${errorText}`);
-    }
-    const data = await res.json();
-    const email = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    
+    const email = await generateWithRetry();
     return postProcessStudentPlaceholders(email, studentInfo);
   }
 }
@@ -412,7 +570,7 @@ const rateLimitedMap = async <T, R>(
 };
 
 // Rate limiting configuration
-const REQUESTS_PER_MINUTE_PER_KEY = 15; // Gemini API rate limit per key
+const REQUESTS_PER_MINUTE_PER_KEY = 95; // Gemini API rate limit per key
 const TOKENS_PER_MINUTE = REQUESTS_PER_MINUTE_PER_KEY * 5; // 5 keys
 const TOKENS_PER_SECOND = TOKENS_PER_MINUTE / 60;
 const BUCKET_SIZE = TOKENS_PER_MINUTE * 2; // Allow for bursts
@@ -512,7 +670,7 @@ async function rateLimitedRequest<T>(key: string, fn: () => Promise<T>): Promise
 
 // Batch processing configuration
 const MAX_CONCURRENT_PER_KEY = 2; // Conservative concurrency per key
-const BATCH_SIZE = 15; // Total across all keys
+const BATCH_SIZE = 10; // Total across all keys
 
 serve(async (_req: Request) => {
   console.log("[process-pending-emails] Function invoked");
@@ -530,6 +688,14 @@ serve(async (_req: Request) => {
         headers: { "Content-Type": "application/json" },
       });
     }
+    
+    // Update status of fetched emails to 'processing'
+    const emailIds = pendingEmails.map((email: { id: any; }) => email.id);
+    const { error: updateError } = await supabase
+      .from('pending_emails')
+      .update({ status: 'processing' })
+      .in('id', emailIds);
+    if (updateError) throw new Error(`Failed to update email statuses: ${updateError.message}`);
     // Track unique campaign_ids processed in this batch
     const processedCampaignIds = new Set<string>();
     const emailsByKey: Record<string, typeof pendingEmails> = {};
