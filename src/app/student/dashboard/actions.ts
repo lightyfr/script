@@ -99,20 +99,25 @@ export async function getStudentDashboardStats() {
       .from('email_logs')
       .select('id, open_count, campaign_id, status, created_at')
       .in('campaign_id', campaignIds),
-      
+    
     // Get replied emails with timestamps for the last 30 days
     supabase
       .from('email_logs')
-      .select('id, created_at, status')
+      .select('id, created_at, replied_at, status, sent_at')
       .in('campaign_id', campaignIds)
       .eq('status', 'replied')
-      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .not('replied_at', 'is', null)
+      .gte('replied_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
   ]);
   
   // Process daily activity data with both sent and replied emails
-  const pendingEmailsArray = pendingEmails || [];
-  const repliedEmailsArray = repliedEmailsData || [];
+  const pendingEmailsArray = Array.isArray(pendingEmails) ? pendingEmails : [];
+  const repliedEmailsArray = Array.isArray(repliedEmailsData) ? repliedEmailsData : [];
   const dailyActivityData = [...pendingEmailsArray, ...repliedEmailsArray];
+  
+  // Log for debugging
+  console.log('Pending emails:', pendingEmailsArray.length);
+  console.log('Replied emails:', repliedEmailsArray?.length || 0);
   // Calculate total opens by summing up all open_counts
   const totalOpens = (emailLogs || []).reduce((sum, log) => sum + (log.open_count || 0), 0);
   const totalTrackedEmails = (allEmailLogs || []).length;
@@ -136,7 +141,14 @@ export async function getStudentDashboardStats() {
 }
 
 // Helper function to process daily data
-function processDailyData(logs: Array<{ created_at: string; status?: string | null }>): Array<{ name: string; date: Date; activity: number; responseRate: number }> {
+function processDailyData(
+  logs: Array<{ 
+    created_at: string; 
+    status?: string | null; 
+    replied_at?: string | null;
+    sent_at?: string | null;
+  }>
+): Array<{ name: string; date: Date; activity: number; replies: number; responseRate: number }> {
   const dailyActivity: { [dateKey: string]: { 
     name: string; 
     date: Date;
@@ -164,42 +176,47 @@ function processDailyData(logs: Array<{ created_at: string; status?: string | nu
   }
 
 
-  // Process each log entry
+  // First pass: Count sent emails by date
   logs.forEach(log => {
-    const date = new Date(log.created_at);
+    // Use sent_at if available, otherwise fall back to created_at
+    const sentDate = log.sent_at || log.created_at;
+    const date = new Date(sentDate);
     date.setHours(0, 0, 0, 0);
     const dateKey = date.toISOString().split('T')[0];
     
     if (dailyActivity[dateKey]) {
-      if (log.status === 'replied') {
-        // This is a reply
-        dailyActivity[dateKey].replied++;
-      } else if (log.status === 'sent' || log.status === 'delivered') {
-        // This is a sent email
-        dailyActivity[dateKey].sent++;
-      } else if (log.status === undefined) {
-        // Default to counting as sent if status is not specified
+      // Count all non-reply statuses as sent
+      if (log.status !== 'replied') {
         dailyActivity[dateKey].sent++;
       }
     }
   });
 
-  // Convert to array, sort by date, and calculate response rates
+  // Second pass: Count replies and attribute them to the sent date
+  logs.forEach(log => {
+    if (log.status === 'replied' && log.replied_at) {
+      // Use sent_at to attribute the reply to the correct day
+      const sentDate = log.sent_at || log.created_at;
+      const date = new Date(sentDate);
+      date.setHours(0, 0, 0, 0);
+      const dateKey = date.toISOString().split('T')[0];
+      
+      if (dailyActivity[dateKey]) {
+        dailyActivity[dateKey].replied++;
+      }
+    }
+  });
+
+  // Convert to array, sort by date, and return the data
   return Object.values(dailyActivity)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .map(data => {
-      // Activity is the number of sent emails
-      // Response rate is (replies / sent) * 100
-      const activity = data.sent;
-      const responseRate = activity > 0 ? (data.replied / activity) * 100 : 0;
-      
-      return {
-        name: data.name,
-        date: data.date,
-        activity: activity,
-        responseRate: parseFloat(responseRate.toFixed(1))
-      };
-    });
+    .map(data => ({
+      name: data.name,
+      date: data.date,
+      activity: data.sent,
+      replies: data.replied,
+      responseRate: data.sent > 0 ? parseFloat(((data.replied / data.sent) * 100).toFixed(1)) : 0,
+    }));
 }
 
 
@@ -553,6 +570,7 @@ export async function getConnectionStats() {
     .map(data => ({
       name: data.name,
       activity: data.activity,
+      replies: data.activity > 0 ? parseFloat(((data.accepted / data.activity) * 100).toFixed(1)) : 0,
       responseRate: data.activity > 0 ? parseFloat(((data.accepted / data.activity) * 100).toFixed(1)) : 0,
     }));
 

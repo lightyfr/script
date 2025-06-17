@@ -68,7 +68,8 @@ function StudentDashboardInner() {
       name: string; 
       date: Date;
       activity: number; 
-      responseRate: number 
+      replies: number 
+      responseRate: number
     }>;
   } | null>({
     stats: {
@@ -84,7 +85,7 @@ function StudentDashboardInner() {
     dailyChartData: []
   });
   const [connectionStats, setConnectionStats] = useState<{
-    monthlyConnectionData: Array<{ name: string; activity: number; responseRate: number }>;
+    monthlyConnectionData: Array<{ name: string; activity: number; replies: number, responseRate: number }>;
   } | null>(null);
   const [campaignStatus, setCampaignStatus] = useState<Array<{
     id: string;
@@ -385,11 +386,13 @@ function StudentDashboardInner() {
             data={dashboardStats?.dailyChartData?.map(item => ({
               date: item.date,
               'Emails Sent': item.activity,
+              'Replies': item.replies,
               'Response Rate': item.responseRate
             })) || []}
             series={[
               { key: 'Emails Sent', color: "magenta" },
-              { key: 'Response Rate', color: "aqua" },
+              { key: 'Replies', color: "yellow" },
+              { key: 'Response Rate', color: "emerald" },
             ]}
             date={{
               format: 'MMM d',
@@ -424,7 +427,8 @@ function StudentDashboardInner() {
               return {
                 date,
                 'Connections': item.activity,
-                'Acceptance Rate': item.responseRate
+                'Acceptance Rate': item.replies,
+                'Response Rate': item.responseRate
               };
             }) || []}
             date={{
