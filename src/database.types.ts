@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      api_key_usage: {
+        Row: {
+          api: Database["public"]["Enums"]["api_type"] | null
+          api_key: string
+          created_at: string | null
+          id: number
+          last_used_at: string | null
+          recent_requests: string[] | null
+          service: Database["public"]["Enums"]["api"] | null
+        }
+        Insert: {
+          api?: Database["public"]["Enums"]["api_type"] | null
+          api_key: string
+          created_at?: string | null
+          id?: number
+          last_used_at?: string | null
+          recent_requests?: string[] | null
+          service?: Database["public"]["Enums"]["api"] | null
+        }
+        Update: {
+          api?: Database["public"]["Enums"]["api_type"] | null
+          api_key?: string
+          created_at?: string | null
+          id?: number
+          last_used_at?: string | null
+          recent_requests?: string[] | null
+          service?: Database["public"]["Enums"]["api"] | null
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           created_at: string
@@ -45,7 +75,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "campaigns_user_id_fkey" 
+            foreignKeyName: "campaigns_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -106,8 +136,9 @@ export type Database = {
           id: string
           open_count: number | null
           pending_email_id: string | null
+          replied_at: string | null
           sent_at: string
-          status: Database["public"]["Enums"]["email_status"] | null
+          status: Database["public"]["Enums"]["email_status"] | null   
           student_id: string
           tracking_id: string | null
           updated_at: string
@@ -119,8 +150,9 @@ export type Database = {
           id?: string
           open_count?: number | null
           pending_email_id?: string | null
+          replied_at?: string | null
           sent_at?: string
-          status?: Database["public"]["Enums"]["email_status"] | null
+          status?: Database["public"]["Enums"]["email_status"] | null  
           student_id: string
           tracking_id?: string | null
           updated_at?: string
@@ -132,8 +164,9 @@ export type Database = {
           id?: string
           open_count?: number | null
           pending_email_id?: string | null
+          replied_at?: string | null
           sent_at?: string
-          status?: Database["public"]["Enums"]["email_status"] | null
+          status?: Database["public"]["Enums"]["email_status"] | null  
           student_id?: string
           tracking_id?: string | null
           updated_at?: string
@@ -150,7 +183,7 @@ export type Database = {
             foreignKeyName: "email_logs_pending_email_id_fkey"
             columns: ["pending_email_id"]
             isOneToOne: false
-            referencedRelation: "pending_emails"     
+            referencedRelation: "pending_emails"
             referencedColumns: ["id"]
           },
           {
@@ -297,6 +330,7 @@ export type Database = {
           research_topics: string[] | null
           summary: string | null
           university: string | null
+          vector: string | null
         }
         Insert: {
           department?: string | null
@@ -305,6 +339,7 @@ export type Database = {
           research_topics?: string[] | null
           summary?: string | null
           university?: string | null
+          vector?: string | null
         }
         Update: {
           department?: string | null
@@ -313,6 +348,7 @@ export type Database = {
           research_topics?: string[] | null
           summary?: string | null
           university?: string | null
+          vector?: string | null
         }
         Relationships: []
       }
@@ -394,7 +430,7 @@ export type Database = {
           firstName: string | null
           id: string
           lastName: string | null
-          role: Database["public"]["Enums"]["user_role"] | null
+          role: Database["public"]["Enums"]["user_role"] | null        
           school: string | null
           updated_at: string
         }
@@ -404,7 +440,7 @@ export type Database = {
           firstName?: string | null
           id: string
           lastName?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
+          role?: Database["public"]["Enums"]["user_role"] | null       
           school?: string | null
           updated_at?: string
         }
@@ -414,7 +450,7 @@ export type Database = {
           firstName?: string | null
           id?: string
           lastName?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
+          role?: Database["public"]["Enums"]["user_role"] | null       
           school?: string | null
           updated_at?: string
         }
@@ -443,9 +479,124 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
+      get_rate_limited_api_key: {
+        Args: { rpm_limit?: number }
+        Returns: {
+          key_to_use: string
+        }[]
+      }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }       
+        Returns: unknown
+      }
+      query_scraped_professors: {
+        Args: {
+          embedding: string
+          match_threshold: number
+          match_count: number
+        }
+        Returns: {
+          department: string | null
+          email: string
+          name: string | null
+          research_topics: string[] | null
+          summary: string | null
+          university: string | null
+          vector: string | null
+        }[]
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
     }
     Enums: {
+      api: "email" | "write" | "scrape"
+      api_type: "gemini" | "perplexity"
       connection_status: "pending" | "accepted" | "rejected"
       email_status:
         | "sent"
@@ -462,7 +613,7 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DefaultSchema = Database[Extract<keyof Database, "public">]       
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
@@ -472,10 +623,10 @@ export type Tables<
     schema: keyof Database
   }
     ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])  
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database } 
+  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &   
       Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
@@ -500,7 +651,7 @@ export type TablesInsert<
   }
     ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database } 
   ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
@@ -523,7 +674,7 @@ export type TablesUpdate<
   }
     ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database } 
   ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
@@ -546,7 +697,7 @@ export type Enums<
   }
     ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }  
   ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
@@ -556,7 +707,7 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends { 
     schema: keyof Database
   }
     ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
@@ -570,6 +721,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      api: ["email", "write", "scrape"],
+      api_type: ["gemini", "perplexity"],
       connection_status: ["pending", "accepted", "rejected"],
       email_status: [
         "sent",

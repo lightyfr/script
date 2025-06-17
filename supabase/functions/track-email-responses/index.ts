@@ -234,6 +234,7 @@ async function trackUserEmails(
       student_id: string;
       pending_email_id: string | null;  // Reference to pending_emails table
       sent_at: string;
+      replied_at: string | null;
       status: string | null;
       campaign_id?: string | null;
       open_count?: number | null;
@@ -276,7 +277,8 @@ async function trackUserEmails(
           
           if (hasReplied) {
             const updateData = { 
-              status: 'replied'  // Let the database trigger handle updated_at
+              status: 'replied',
+              replied_at: new Date().toISOString(),
             };
             
             console.log(`[${userId}] Updating email ${email.id} with:`, JSON.stringify(updateData));
