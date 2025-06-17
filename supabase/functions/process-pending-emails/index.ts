@@ -417,9 +417,23 @@ const TOKENS_PER_MINUTE = REQUESTS_PER_MINUTE_PER_KEY * 5; // 5 keys
 const TOKENS_PER_SECOND = TOKENS_PER_MINUTE / 60;
 const BUCKET_SIZE = TOKENS_PER_MINUTE * 2; // Allow for bursts
 
-// Token bucket state
-let tokens = BUCKET_SIZE;
-let lastRefillTime = Date.now();
+// Token bucket state per key
+interface TokenBucket {
+  tokens: number;
+  lastRefillTime: number;
+}
+
+// Initialize token buckets for each key
+const tokenBuckets: Record<string, TokenBucket> = {};
+const apiKeys = [geminiApiKey, geminiApiKey2, geminiApiKey3, geminiApiKey4, geminiApiKey5];
+
+// Initialize token buckets for all API keys
+apiKeys.forEach(key => {
+  tokenBuckets[key] = {
+    tokens: BUCKET_SIZE / 5, // Split total tokens evenly across keys
+    lastRefillTime: Date.now()
+  };
+});
 
 // Request tracking
 let activeRequests = 0;
@@ -429,10 +443,19 @@ const requestTimestamps: Record<string, number[]> = {}; // key -> timestamps
 async function rateLimitedRequest<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const now = Date.now();
   
-  // Refill tokens based on time passed
-  const timePassed = (now - lastRefillTime) / 1000; // in seconds
-  tokens = Math.min(BUCKET_SIZE, tokens + (timePassed * TOKENS_PER_SECOND));
-  lastRefillTime = now;
+  // Initialize or get token bucket for this key
+  if (!tokenBuckets[key]) {
+    tokenBuckets[key] = {
+      tokens: BUCKET_SIZE / 5,
+      lastRefillTime: now
+    };
+  }
+  const bucket = tokenBuckets[key];
+  
+  // Refill tokens based on time passed for this key's bucket
+  const timePassed = (now - bucket.lastRefillTime) / 1000; // in seconds
+  bucket.tokens = Math.min(BUCKET_SIZE / 5, bucket.tokens + (timePassed * (TOKENS_PER_SECOND / 5)));
+  bucket.lastRefillTime = now;
 
   // Initialize request tracking for this key
   if (!requestTimestamps[key]) {
@@ -454,32 +477,32 @@ async function rateLimitedRequest<T>(key: string, fn: () => Promise<T>): Promise
     }
   }
 
-  // Wait if we don't have enough tokens
-  while (tokens < 1) {
-    const timeToWait = Math.ceil((1 - tokens) / TOKENS_PER_SECOND * 1000);
-    console.log(`[RATE_LIMIT] Waiting ${timeToWait}ms for token refill (${tokens.toFixed(2)} tokens available)`);
+  // Wait if we don't have enough tokens for this key
+  while (bucket.tokens < 1) {
+    const timeToWait = Math.ceil((1 - bucket.tokens) / (TOKENS_PER_SECOND / 5) * 1000);
+    console.log(`[RATE_LIMIT] [${key.substring(0, 8)}...] Waiting ${timeToWait}ms for token refill (${bucket.tokens.toFixed(2)} tokens available)`);
     await new Promise(resolve => setTimeout(resolve, timeToWait));
     
     // Update tokens after waiting
     const now = Date.now();
-    const timePassed = (now - lastRefillTime) / 1000;
-    tokens = Math.min(BUCKET_SIZE, tokens + (timePassed * TOKENS_PER_SECOND));
-    lastRefillTime = now;
+    const timePassed = (now - bucket.lastRefillTime) / 1000;
+    bucket.tokens = Math.min(BUCKET_SIZE / 5, bucket.tokens + (timePassed * (TOKENS_PER_SECOND / 5)));
+    bucket.lastRefillTime = now;
   }
 
   // Deduct a token and make the request
-  tokens--;
+  bucket.tokens--;
   requestTimestamps[key].push(Date.now());
   activeRequests++;
   
   try {
     const startTime = Date.now();
-    console.log(`[REQUEST_START] Key: ${key}, Active: ${activeRequests}, Tokens: ${tokens.toFixed(2)}`);
+    console.log(`[REQUEST_START] Key: ${key.substring(0, 8)}..., Active: ${activeRequests}, Tokens: ${bucket.tokens.toFixed(2)}`);
     
     const result = await fn();
     
     const duration = Date.now() - startTime;
-    console.log(`[REQUEST_END] Key: ${key}, Duration: ${duration}ms, Active: ${activeRequests}, Tokens: ${tokens.toFixed(2)}`);
+    console.log(`[REQUEST_END] Key: ${key.substring(0, 8)}..., Duration: ${duration}ms, Active: ${activeRequests}, Tokens: ${bucket.tokens.toFixed(2)}`);
     
     return result;
   } finally {
@@ -509,14 +532,8 @@ serve(async (_req: Request) => {
     }
     // Track unique campaign_ids processed in this batch
     const processedCampaignIds = new Set<string>();
-    const apiKeys = [geminiApiKey, geminiApiKey2, geminiApiKey3, geminiApiKey4, geminiApiKey5];
-    const emailsByKey: Record<string, typeof pendingEmails> = {
-      [geminiApiKey]: [],
-      [geminiApiKey2]: [],
-      [geminiApiKey3]: [],
-      [geminiApiKey4]: [],
-      [geminiApiKey5]: [],
-    };
+    const emailsByKey: Record<string, typeof pendingEmails> = {};
+    apiKeys.forEach(key => { emailsByKey[key] = []; });
     
     // Distribute emails round-robin across keys
     pendingEmails.forEach((email: any, i: number) => {
@@ -540,7 +557,7 @@ serve(async (_req: Request) => {
     
           const studentProfile = await supabase
             .from("student_profiles")
-            .select("resume_url, phone")
+            .select("resume_url")
             .eq("user_id", campaign.user_id)
             .single()
             .then((res: { data: any; }) => res.data);
