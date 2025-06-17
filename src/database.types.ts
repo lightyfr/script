@@ -45,7 +45,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "campaigns_user_id_fkey"
+            foreignKeyName: "campaigns_user_id_fkey" 
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -102,6 +102,7 @@ export type Database = {
         Row: {
           campaign_id: string | null
           created_at: string
+          gmail_thread_id: string | null
           id: string
           open_count: number | null
           pending_email_id: string | null
@@ -114,6 +115,7 @@ export type Database = {
         Insert: {
           campaign_id?: string | null
           created_at?: string
+          gmail_thread_id?: string | null
           id?: string
           open_count?: number | null
           pending_email_id?: string | null
@@ -126,6 +128,7 @@ export type Database = {
         Update: {
           campaign_id?: string | null
           created_at?: string
+          gmail_thread_id?: string | null
           id?: string
           open_count?: number | null
           pending_email_id?: string | null
@@ -147,7 +150,7 @@ export type Database = {
             foreignKeyName: "email_logs_pending_email_id_fkey"
             columns: ["pending_email_id"]
             isOneToOne: false
-            referencedRelation: "pending_emails"
+            referencedRelation: "pending_emails"     
             referencedColumns: ["id"]
           },
           {
@@ -283,6 +286,33 @@ export type Database = {
           university?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      scraped_professors: {
+        Row: {
+          department: string | null
+          email: string
+          name: string | null
+          research_topics: string[] | null
+          summary: string | null
+          university: string | null
+        }
+        Insert: {
+          department?: string | null
+          email: string
+          name?: string | null
+          research_topics?: string[] | null
+          summary?: string | null
+          university?: string | null
+        }
+        Update: {
+          department?: string | null
+          email?: string
+          name?: string | null
+          research_topics?: string[] | null
+          summary?: string | null
+          university?: string | null
         }
         Relationships: []
       }

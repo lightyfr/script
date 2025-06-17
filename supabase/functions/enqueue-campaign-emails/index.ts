@@ -144,59 +144,41 @@ async function findProfessorsWithGemini(interests: string[], universities: strin
 serve(async (req: Request) => {
   const startTime = Date.now();
   try {
-    let campaignId;
-    try {
-      const reqJson = await req.json();
-      campaignId = reqJson.campaignId;
-      console.log(`[enqueue-campaign-emails] Received campaignId: ${campaignId}`);
-    } catch (parseErr) {
-      console.error("[enqueue-campaign-emails] Failed to parse request JSON", parseErr);
-      throw new Error("Invalid request body: must be JSON with campaignId");
-    }
-    // Get campaign details
     const { data: campaign, error: campaignError } = await supabase
-      .from("campaigns")
-      .select("*")
-      .eq("id", campaignId)
-      .single();
+    .from("campaigns")
+    .select("*")
+    .eq("status", "pending_processing")
+    .single()
+    .limit(1);
     if (campaignError) {
-      console.error(`[enqueue-campaign-emails] Failed to fetch campaign for id ${campaignId}:`, campaignError);
+      console.log(`[enqueue-campaign-emails] No campaigns found with status 'pending_processing'`);
+      return new Response(JSON.stringify({ error: "No campaigns found with status 'pending_processing'" }), {
+      });
+    }
+    const { error: campaignUpdateError } = await supabase.from("campaigns").update({ status: "queued" }).eq("id", campaign.id);
+
+    if (campaignUpdateError) {
+      console.error(`[enqueue-campaign-emails] Failed to update campaign status to 'queued':`, campaignUpdateError);
+      throw new Error(`Failed to update campaign status: ${campaignUpdateError.message}`);
+    }
+    console.log(`[enqueue-campaign-emails] Found campaignId: ${campaign.id}`);
+    // Get campaign details
+    if (campaignError) {
+      console.error(`[enqueue-campaign-emails] Failed to fetch campaign for id ${campaign.id}:`, campaignError);
       throw new Error(`Failed to fetch campaign: ${campaignError.message}`);
     }
     console.log(`[enqueue-campaign-emails] Campaign loaded:`, campaign);
     // Find professors (OpenAlex first, fallback to Gemini)
     let professors = [];
-    try {
-      console.log('[enqueue-campaign-emails] Trying to find professors with OpenAlex...');
-      professors = await findProfessorsWithOpenAlex(
-        campaign.research_interests,
-        campaign.target_universities,
-        campaign.max_emails
-      );
-      console.log('[enqueue-campaign-emails] Professors found with OpenAlex:', professors);
-      
-      // If no professors found with OpenAlex, try Gemini
-      if (!professors || professors.length === 0) {
-        console.log('[enqueue-campaign-emails] No professors found with OpenAlex, trying Gemini...');
-        professors = await findProfessorsWithGemini(
-          campaign.research_interests,
-          campaign.target_universities,
-          campaign.max_emails
-        );
-        console.log('[enqueue-campaign-emails] Professors found with Gemini:', professors);
-      }
-    } catch (e) {
-      console.error('[enqueue-campaign-emails] OpenAlex search failed, falling back to Gemini:', e);
-      professors = await findProfessorsWithGemini(
+       professors = await findProfessorsWithGemini(
         campaign.research_interests,
         campaign.target_universities,
         campaign.max_emails
       );
       console.log('[enqueue-campaign-emails] Professors found with Gemini:', professors);
-    }
     
     if (!professors || professors.length === 0) {
-      throw new Error('No professors found with either OpenAlex or Gemini');
+      throw new Error('No professors found with Gemini');
     }
     console.log(`[enqueue-campaign-emails] Found ${professors.length} professors to process`);
 
@@ -232,7 +214,7 @@ serve(async (req: Request) => {
     }
     // Insert a pending_emails row for each professor
     const inserts = filteredProfessors.slice(0, campaign.max_emails).map((prof: any) => ({
-      campaign_id: campaignId,
+      campaign_id: campaign.id,
       professor_name: prof.name,
       professor_email: prof.email,
       university: prof.university,
@@ -248,14 +230,8 @@ serve(async (req: Request) => {
       console.error(`[enqueue-campaign-emails] Failed to insert pending_emails:`, insertError);
       throw new Error(`Failed to enqueue emails: ${insertError.message}`);
     }
-    // Update campaign status to 'queued'
-    const { error: updateError } = await supabase.from("campaigns").update({ status: "queued" }).eq("id", campaignId);
-    if (updateError) {
-      console.error(`[enqueue-campaign-emails] Failed to update campaign status to 'queued':`, updateError);
-      throw new Error(`Failed to update campaign status: ${updateError.message}`);
-    }
     const duration = Date.now() - startTime;
-    console.log(`[enqueue-campaign-emails] Execution time: ${duration} ms, processed campaignId: ${campaignId}, inserted: ${inserts.length}`);
+    console.log(`[enqueue-campaign-emails] Execution time: ${duration} ms, processed campaignId: ${campaign.id}, inserted: ${inserts.length}`);
     return new Response(JSON.stringify({ success: true, count: inserts.length}), {
       headers: { "Content-Type": "application/json" },
     });
