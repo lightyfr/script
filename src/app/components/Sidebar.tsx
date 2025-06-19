@@ -13,7 +13,9 @@ import {
   Option,
   Text,
   DropdownWrapper,
-  Tag, // Added DropdownWrapper
+  Tag,
+  SegmentedControl,
+  useTheme, // Added DropdownWrapper
 } from "@/once-ui/components";
 import type { IconName } from "@/once-ui/icons";
 import { PricingTable, useAuth, useClerk, useUser } from "@clerk/nextjs";
@@ -51,6 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
     }
     setIsProfileDropdownOpen(false); // Close dropdown after action
   };
+
+  const { theme, setTheme } = useTheme();
 
   const handleSignOut = async () => {
     if (signOut) {
@@ -131,6 +135,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
     />
     </Row>
     <Row padding="4">
+    <SegmentedControl
+    selected={theme}
+    buttons={[
+      { label: "Dark", value: "dark", onClick: () => setTheme("dark") },
+      { label: "Light", value: "light", onClick: () => setTheme("light") },
+    ]}
+    onToggle={handleSelect}
+    />
+    </Row>
+    <Row padding="4">
     <Option
       hasPrefix={<Icon name="signOut" size="s" />}
       danger
@@ -139,6 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
       onClick={handleSignOut}
     />    
     </Row>
+
     </Flex>
   );
 
