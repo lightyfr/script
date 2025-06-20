@@ -146,7 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ items }) => {
     </Row>
     <Row padding="4">
     <Option
-      hasPrefix={<Icon name="signOut" size="s" />}
+      hasPrefix={<Icon name="signOut" onBackground="danger-medium" size="s" />}
       danger
       label="Sign Out"
       value="signOut"

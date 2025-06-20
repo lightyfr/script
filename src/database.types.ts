@@ -15,26 +15,26 @@ export type Database = {
           api_key: string
           created_at: string | null
           id: number
-          last_used_at: string | null
-          recent_requests: string[] | null
+          last_used_at: string | null       
+          recent_requests: string[] | null  
           service: Database["public"]["Enums"]["api"] | null
         }
         Insert: {
           api?: Database["public"]["Enums"]["api_type"] | null
           api_key: string
-          created_at?: string | null
+          created_at?: string | null        
           id?: number
-          last_used_at?: string | null
-          recent_requests?: string[] | null
+          last_used_at?: string | null      
+          recent_requests?: string[] | null 
           service?: Database["public"]["Enums"]["api"] | null
         }
         Update: {
           api?: Database["public"]["Enums"]["api_type"] | null
           api_key?: string
-          created_at?: string | null
+          created_at?: string | null        
           id?: number
-          last_used_at?: string | null
-          recent_requests?: string[] | null
+          last_used_at?: string | null      
+          recent_requests?: string[] | null 
           service?: Database["public"]["Enums"]["api"] | null
         }
         Relationships: []
@@ -42,34 +42,37 @@ export type Database = {
       campaigns: {
         Row: {
           created_at: string
-          error_message: string | null
+          error_message: string | null      
           id: string
           max_emails: number
-          research_interests: string[]
+          research_interests: string[]      
           status: string
-          target_universities: string[]
+          target_universities: string[]     
+          type: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          error_message?: string | null
+          error_message?: string | null     
           id?: string
           max_emails: number
-          research_interests: string[]
+          research_interests: string[]      
           status?: string
-          target_universities: string[]
+          target_universities: string[]     
+          type?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          error_message?: string | null
+          error_message?: string | null     
           id?: string
           max_emails?: number
-          research_interests?: string[]
+          research_interests?: string[]     
           status?: string
-          target_universities?: string[]
+          target_universities?: string[]    
+          type?: string
           updated_at?: string
           user_id?: string
         }
@@ -78,8 +81,8 @@ export type Database = {
             foreignKeyName: "campaigns_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: "users"     
+            referencedColumns: ["id"]       
           },
         ]
       }
@@ -114,84 +117,84 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "connections_professor_id_fkey"
-            columns: ["professor_id"]
+            columns: ["professor_id"]       
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: "users"     
+            referencedColumns: ["id"]       
           },
           {
             foreignKeyName: "connections_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: "users"     
+            referencedColumns: ["id"]       
           },
         ]
       }
       email_logs: {
         Row: {
-          campaign_id: string | null
+          campaign_id: string | null        
           created_at: string
-          gmail_thread_id: string | null
+          gmail_thread_id: string | null    
           id: string
           open_count: number | null
-          pending_email_id: string | null
+          pending_email_id: string | null   
           replied_at: string | null
           sent_at: string
-          status: Database["public"]["Enums"]["email_status"] | null   
+          status: Database["public"]["Enums"]["email_status"] | null
           student_id: string
-          tracking_id: string | null
+          tracking_id: string | null        
           updated_at: string
         }
         Insert: {
-          campaign_id?: string | null
+          campaign_id?: string | null       
           created_at?: string
-          gmail_thread_id?: string | null
+          gmail_thread_id?: string | null   
           id?: string
-          open_count?: number | null
-          pending_email_id?: string | null
-          replied_at?: string | null
+          open_count?: number | null        
+          pending_email_id?: string | null  
+          replied_at?: string | null        
           sent_at?: string
-          status?: Database["public"]["Enums"]["email_status"] | null  
+          status?: Database["public"]["Enums"]["email_status"] | null
           student_id: string
-          tracking_id?: string | null
+          tracking_id?: string | null       
           updated_at?: string
         }
         Update: {
-          campaign_id?: string | null
+          campaign_id?: string | null       
           created_at?: string
-          gmail_thread_id?: string | null
+          gmail_thread_id?: string | null   
           id?: string
-          open_count?: number | null
-          pending_email_id?: string | null
-          replied_at?: string | null
+          open_count?: number | null        
+          pending_email_id?: string | null  
+          replied_at?: string | null        
           sent_at?: string
-          status?: Database["public"]["Enums"]["email_status"] | null  
+          status?: Database["public"]["Enums"]["email_status"] | null
           student_id?: string
-          tracking_id?: string | null
+          tracking_id?: string | null       
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "email_logs_campaign_id_fkey"
-            columns: ["campaign_id"]
+            columns: ["campaign_id"]        
             isOneToOne: false
-            referencedRelation: "campaigns"
-            referencedColumns: ["id"]
+            referencedRelation: "campaigns" 
+            referencedColumns: ["id"]       
           },
           {
             foreignKeyName: "email_logs_pending_email_id_fkey"
-            columns: ["pending_email_id"]
+            columns: ["pending_email_id"]   
             isOneToOne: false
             referencedRelation: "pending_emails"
-            referencedColumns: ["id"]
+            referencedColumns: ["id"]       
           },
           {
             foreignKeyName: "email_logs_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: "users"     
+            referencedColumns: ["id"]       
           },
         ]
       }
@@ -228,8 +231,8 @@ export type Database = {
             foreignKeyName: "email_templates_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: "users"     
+            referencedColumns: ["id"]       
           },
         ]
       }
@@ -238,11 +241,11 @@ export type Database = {
           campaign_id: string
           created_at: string
           department: string | null
-          error_message: string | null
+          error_message: string | null      
           id: string
           professor_email: string
           professor_name: string
-          research_areas: string[] | null
+          research_areas: string[] | null   
           sent_at: string | null
           status: string
           university: string | null
@@ -251,38 +254,38 @@ export type Database = {
         Insert: {
           campaign_id: string
           created_at?: string
-          department?: string | null
-          error_message?: string | null
+          department?: string | null        
+          error_message?: string | null     
           id?: string
           professor_email: string
           professor_name: string
-          research_areas?: string[] | null
+          research_areas?: string[] | null  
           sent_at?: string | null
           status?: string
-          university?: string | null
+          university?: string | null        
           updated_at?: string
         }
         Update: {
           campaign_id?: string
           created_at?: string
-          department?: string | null
-          error_message?: string | null
+          department?: string | null        
+          error_message?: string | null     
           id?: string
           professor_email?: string
           professor_name?: string
-          research_areas?: string[] | null
+          research_areas?: string[] | null  
           sent_at?: string | null
           status?: string
-          university?: string | null
+          university?: string | null        
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "pending_emails_campaign_id_fkey"
-            columns: ["campaign_id"]
+            columns: ["campaign_id"]        
             isOneToOne: false
-            referencedRelation: "campaigns"
-            referencedColumns: ["id"]
+            referencedRelation: "campaigns" 
+            referencedColumns: ["id"]       
           },
         ]
       }
@@ -291,9 +294,9 @@ export type Database = {
           bio: string | null
           created_at: string
           department: string | null
-          interests: string[] | null
-          lab_website: string | null
-          open_to_students: boolean | null
+          interests: string[] | null        
+          lab_website: string | null        
+          open_to_students: boolean | null  
           university: string | null
           updated_at: string
           user_id: string
@@ -301,22 +304,22 @@ export type Database = {
         Insert: {
           bio?: string | null
           created_at?: string
-          department?: string | null
-          interests?: string[] | null
-          lab_website?: string | null
-          open_to_students?: boolean | null
-          university?: string | null
+          department?: string | null        
+          interests?: string[] | null       
+          lab_website?: string | null       
+          open_to_students?: boolean | null 
+          university?: string | null        
           updated_at?: string
           user_id: string
         }
         Update: {
           bio?: string | null
           created_at?: string
-          department?: string | null
-          interests?: string[] | null
-          lab_website?: string | null
-          open_to_students?: boolean | null
-          university?: string | null
+          department?: string | null        
+          interests?: string[] | null       
+          lab_website?: string | null       
+          open_to_students?: boolean | null 
+          university?: string | null        
           updated_at?: string
           user_id?: string
         }
@@ -327,27 +330,27 @@ export type Database = {
           department: string | null
           email: string
           name: string | null
-          research_topics: string[] | null
+          research_topics: string[] | null  
           summary: string | null
           university: string | null
           vector: string | null
         }
         Insert: {
-          department?: string | null
+          department?: string | null        
           email: string
           name?: string | null
-          research_topics?: string[] | null
+          research_topics?: string[] | null 
           summary?: string | null
-          university?: string | null
+          university?: string | null        
           vector?: string | null
         }
         Update: {
-          department?: string | null
+          department?: string | null        
           email?: string
           name?: string | null
-          research_topics?: string[] | null
+          research_topics?: string[] | null 
           summary?: string | null
-          university?: string | null
+          university?: string | null        
           vector?: string | null
         }
         Relationships: []
@@ -356,7 +359,7 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string
-          interests: string[] | null
+          interests: string[] | null        
           resume_url: string | null
           updated_at: string
           user_id: string
@@ -365,8 +368,8 @@ export type Database = {
         Insert: {
           bio?: string | null
           created_at?: string
-          interests?: string[] | null
-          resume_url?: string | null
+          interests?: string[] | null       
+          resume_url?: string | null        
           updated_at?: string
           user_id: string
           verified?: boolean | null
@@ -374,8 +377,8 @@ export type Database = {
         Update: {
           bio?: string | null
           created_at?: string
-          interests?: string[] | null
-          resume_url?: string | null
+          interests?: string[] | null       
+          resume_url?: string | null        
           updated_at?: string
           user_id?: string
           verified?: boolean | null
@@ -389,27 +392,27 @@ export type Database = {
           expires_at: string | null
           id: string
           provider: string
-          refresh_token: string | null
+          refresh_token: string | null      
           updated_at: string
           user_id: string
         }
         Insert: {
           access_token: string
           created_at?: string
-          expires_at?: string | null
+          expires_at?: string | null        
           id?: string
           provider: string
-          refresh_token?: string | null
+          refresh_token?: string | null     
           updated_at?: string
           user_id: string
         }
         Update: {
           access_token?: string
           created_at?: string
-          expires_at?: string | null
+          expires_at?: string | null        
           id?: string
           provider?: string
-          refresh_token?: string | null
+          refresh_token?: string | null     
           updated_at?: string
           user_id?: string
         }
@@ -418,8 +421,8 @@ export type Database = {
             foreignKeyName: "user_oauth_tokens_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: "users"     
+            referencedColumns: ["id"]       
           },
         ]
       }
@@ -430,7 +433,7 @@ export type Database = {
           firstName: string | null
           id: string
           lastName: string | null
-          role: Database["public"]["Enums"]["user_role"] | null        
+          role: Database["public"]["Enums"]["user_role"] | null
           school: string | null
           updated_at: string
         }
@@ -440,7 +443,7 @@ export type Database = {
           firstName?: string | null
           id: string
           lastName?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null       
+          role?: Database["public"]["Enums"]["user_role"] | null
           school?: string | null
           updated_at?: string
         }
@@ -450,7 +453,7 @@ export type Database = {
           firstName?: string | null
           id?: string
           lastName?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null       
+          role?: Database["public"]["Enums"]["user_role"] | null
           school?: string | null
           updated_at?: string
         }
@@ -484,7 +487,7 @@ export type Database = {
         Returns: unknown
       }
       get_rate_limited_api_key: {
-        Args: { rpm_limit?: number }
+        Args: { rpm_limit?: number }        
         Returns: {
           key_to_use: string
         }[]
@@ -538,7 +541,7 @@ export type Database = {
         Returns: number
       }
       l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }       
+        Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
       }
       query_scraped_professors: {
@@ -551,7 +554,7 @@ export type Database = {
           department: string | null
           email: string
           name: string | null
-          research_topics: string[] | null
+          research_topics: string[] | null  
           summary: string | null
           university: string | null
           vector: string | null
@@ -595,8 +598,8 @@ export type Database = {
       }
     }
     Enums: {
-      api: "email" | "write" | "scrape"
-      api_type: "gemini" | "perplexity"
+      api: "email" | "write" | "scrape"     
+      api_type: "gemini" | "perplexity"     
       connection_status: "pending" | "accepted" | "rejected"
       email_status:
         | "sent"
@@ -605,7 +608,7 @@ export type Database = {
         | "replied"
         | "bounced"
         | "legacy"
-      user_role: "student" | "professor"
+      user_role: "student" | "professor"    
     }
     CompositeTypes: {
       [_ in never]: never
@@ -613,20 +616,20 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]       
+type DefaultSchema = Database[Extract<keyof Database, "public">]
 
 export type Tables<
-  DefaultSchemaTableNameOrOptions extends
+  DefaultSchemaTableNameOrOptions extends   
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof Database
   }
     ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])  
+        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database } 
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &   
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
@@ -643,7 +646,7 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
+  DefaultSchemaTableNameOrOptions extends   
     | keyof DefaultSchema["Tables"]
     | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
@@ -651,8 +654,8 @@ export type TablesInsert<
   }
     ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database } 
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {  
       Insert: infer I
     }
     ? I
@@ -666,7 +669,7 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
+  DefaultSchemaTableNameOrOptions extends   
     | keyof DefaultSchema["Tables"]
     | { schema: keyof Database },
   TableName extends DefaultSchemaTableNameOrOptions extends {
@@ -674,8 +677,8 @@ export type TablesUpdate<
   }
     ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database } 
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {  
       Update: infer U
     }
     ? U
@@ -689,7 +692,7 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
+  DefaultSchemaEnumNameOrOptions extends    
     | keyof DefaultSchema["Enums"]
     | { schema: keyof Database },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
@@ -697,32 +700,32 @@ export type Enums<
   }
     ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }  
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
   ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
+  PublicCompositeTypeNameOrOptions extends  
+    | keyof DefaultSchema["CompositeTypes"] 
     | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends { 
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof Database
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]      
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
   ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]      
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
   public: {
     Enums: {
-      api: ["email", "write", "scrape"],
-      api_type: ["gemini", "perplexity"],
+      api: ["email", "write", "scrape"],    
+      api_type: ["gemini", "perplexity"],   
       connection_status: ["pending", "accepted", "rejected"],
       email_status: [
         "sent",
@@ -732,7 +735,7 @@ export const Constants = {
         "bounced",
         "legacy",
       ],
-      user_role: ["student", "professor"],
+      user_role: ["student", "professor"],  
     },
   },
 } as const

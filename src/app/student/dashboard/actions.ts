@@ -110,14 +110,22 @@ export async function getStudentDashboardStats() {
       .gte('replied_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
   ]);
   
-  // Process daily activity data with both sent and replied emails
-  const pendingEmailsArray = Array.isArray(pendingEmails) ? pendingEmails : [];
-  const repliedEmailsArray = Array.isArray(repliedEmailsData) ? repliedEmailsData : [];
-  const dailyActivityData = [...pendingEmailsArray, ...repliedEmailsArray];
+  // Process daily activity data with all email logs
+  // We use emailLogs since it contains all sent emails with their status
+  const emailLogsArray = Array.isArray(emailLogs) ? emailLogs : [];
+  const dailyActivityData = emailLogsArray.map(log => ({
+    ...log,
+    // Ensure we have all required fields for processDailyData
+    created_at: log.created_at,
+    status: log.status,
+    // Use type assertion to handle the fact that we know these fields exist in the query
+    replied_at: (log as any).replied_at || null,
+    sent_at: (log as any).sent_at || log.created_at // Fallback to created_at if sent_at is not available
+  }));
   
   // Log for debugging
-  console.log('Pending emails:', pendingEmailsArray.length);
-  console.log('Replied emails:', repliedEmailsArray?.length || 0);
+  console.log('Total email logs:', emailLogsArray.length);
+  console.log('Replied emails:', repliedEmailsData?.length || 0);
   // Calculate total opens by summing up all open_counts
   const totalOpens = (emailLogs || []).reduce((sum, log) => sum + (log.open_count || 0), 0);
   const totalTrackedEmails = (allEmailLogs || []).length;
@@ -158,14 +166,17 @@ function processDailyData(
   
   const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
 
-  // Initialize data for the last 30 days
+  // Initialize data for the last 30 days in local timezone
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
   for (let i = 29; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
-    const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    // Convert to YYYY-MM-DD in local timezone
+    const dateKey = new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
+      .toISOString()
+      .split('T')[0];
     const formattedDate = dateFormatter.format(date);
     dailyActivity[dateKey] = { 
       name: formattedDate, 
@@ -180,21 +191,22 @@ function processDailyData(
   logs.forEach(log => {
     // Use sent_at if available, otherwise fall back to created_at
     const sentDate = log.sent_at || log.created_at;
+    // Create date in local timezone
     const date = new Date(sentDate);
-    date.setHours(0, 0, 0, 0);
-    const dateKey = date.toISOString().split('T')[0];
+    // Convert to YYYY-MM-DD in local timezone
+    const dateKey = new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
+      .toISOString()
+      .split('T')[0];
     
     if (dailyActivity[dateKey]) {
-      // Count all non-reply statuses as sent
-      if (log.status !== 'replied') {
-        dailyActivity[dateKey].sent++;
-      }
+      // Count all logs as sent emails
+      dailyActivity[dateKey].sent++;
     }
   });
 
   // Second pass: Count replies and attribute them to the sent date
   logs.forEach(log => {
-    if (log.status === 'replied' && log.replied_at) {
+    if (log.status === 'replied') {
       // Use sent_at to attribute the reply to the correct day
       const sentDate = log.sent_at || log.created_at;
       const date = new Date(sentDate);

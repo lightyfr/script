@@ -94,7 +94,7 @@ async function findProfessorsWithSemanticSearch(
     const { data: professors, error } = await supabase.rpc('query_scraped_professors', {
       embedding: embedding,
       match_count: limit,
-      match_threshold: 0.5, // Adjust threshold as needed (0-1, higher is more strict)
+      match_threshold: 0.7, // Adjust threshold as needed (0-1, higher is more strict)
     });
 
     if (error) {
