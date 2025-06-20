@@ -570,7 +570,7 @@ const rateLimitedMap = async <T, R>(
 };
 
 // Rate limiting configuration
-const REQUESTS_PER_MINUTE_PER_KEY = 95; // Gemini API rate limit per key
+const REQUESTS_PER_MINUTE_PER_KEY = 80; // Gemini API rate limit per key
 const TOKENS_PER_MINUTE = REQUESTS_PER_MINUTE_PER_KEY * 5; // 5 keys
 const TOKENS_PER_SECOND = TOKENS_PER_MINUTE / 60;
 const BUCKET_SIZE = TOKENS_PER_MINUTE * 2; // Allow for bursts
@@ -638,7 +638,7 @@ async function rateLimitedRequest<T>(key: string, fn: () => Promise<T>): Promise
   // Wait if we don't have enough tokens for this key
   while (bucket.tokens < 1) {
     const timeToWait = Math.ceil((1 - bucket.tokens) / (TOKENS_PER_SECOND / 5) * 1000);
-    console.log(`[RATE_LIMIT] [${key.substring(0, 8)}...] Waiting ${timeToWait}ms for token refill (${bucket.tokens.toFixed(2)} tokens available)`);
+    console.log(`[RATE_LIMIT] [${key.substring(0, 12)}...] Waiting ${timeToWait}ms for token refill (${bucket.tokens.toFixed(2)} tokens available)`);
     await new Promise(resolve => setTimeout(resolve, timeToWait));
     
     // Update tokens after waiting
@@ -655,12 +655,12 @@ async function rateLimitedRequest<T>(key: string, fn: () => Promise<T>): Promise
   
   try {
     const startTime = Date.now();
-    console.log(`[REQUEST_START] Key: ${key.substring(0, 8)}..., Active: ${activeRequests}, Tokens: ${bucket.tokens.toFixed(2)}`);
+    console.log(`[REQUEST_START] Key: ${key.substring(0, 12)}..., Active: ${activeRequests}, Tokens: ${bucket.tokens.toFixed(2)}`);
     
     const result = await fn();
     
     const duration = Date.now() - startTime;
-    console.log(`[REQUEST_END] Key: ${key.substring(0, 8)}..., Duration: ${duration}ms, Active: ${activeRequests}, Tokens: ${bucket.tokens.toFixed(2)}`);
+    console.log(`[REQUEST_END] Key: ${key.substring(0, 12)}..., Duration: ${duration}ms, Active: ${activeRequests}, Tokens: ${bucket.tokens.toFixed(2)}`);
     
     return result;
   } finally {
@@ -670,7 +670,7 @@ async function rateLimitedRequest<T>(key: string, fn: () => Promise<T>): Promise
 
 // Batch processing configuration
 const MAX_CONCURRENT_PER_KEY = 2; // Conservative concurrency per key
-const BATCH_SIZE = 10; // Total across all keys
+const BATCH_SIZE = 20; // Total across all keys
 
 serve(async (_req: Request) => {
   console.log("[process-pending-emails] Function invoked");
@@ -688,6 +688,8 @@ serve(async (_req: Request) => {
         headers: { "Content-Type": "application/json" },
       });
     }
+
+    console.log(`[process-pending-emails] Processing ${pendingEmails.length} emails`);
     
     // Update status of fetched emails to 'processing'
     const emailIds = pendingEmails.map((email: { id: any; }) => email.id);
@@ -701,9 +703,12 @@ serve(async (_req: Request) => {
     const emailsByKey: Record<string, typeof pendingEmails> = {};
     apiKeys.forEach(key => { emailsByKey[key] = []; });
     
-    // Distribute emails round-robin across keys
+    // Shuffle the API keys for more even distribution
+    const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5);
+    
+    // Distribute emails round-robin across shuffled keys
     pendingEmails.forEach((email: any, i: number) => {
-      const key = apiKeys[i % apiKeys.length];
+      const key = shuffledKeys[i % shuffledKeys.length];
       emailsByKey[key].push(email);
     });
     
