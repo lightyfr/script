@@ -23,9 +23,10 @@ export type CampaignEmail = {
   university: string;
   department: string;
   research_areas: string[];
+  created_at: string;
   status: string;
-  sent_at: string;
   error_message?: string;
+  gmail_thread_id?: string | null;
 };
 
 async function createSupabaseClientWithClerkToken() {
@@ -79,7 +80,6 @@ export async function getCampaignEmails(campaignId: string): Promise<CampaignEma
   if (!campaign) {
     throw new Error('Campaign not found');
   }
-
   const { data: emails, error } = await supabase
     .from('pending_emails')
     .select(`
@@ -90,23 +90,64 @@ export async function getCampaignEmails(campaignId: string): Promise<CampaignEma
       department,
       research_areas,
       status,
-      sent_at,
-      error_message
+      created_at,
+      error_message,
+      email_logs!pending_email_id (
+        gmail_thread_id
+      )
     `)
     .eq('campaign_id', campaignId)
-    .order('sent_at', { ascending: false });
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching campaign emails:', error);
     return [];
   }
-
   return (emails || []).map(email => ({
     ...email,
     university: email.university || '',
     department: email.department || '',
     research_areas: email.research_areas || [],
-    sent_at: email.sent_at || '',
-    error_message: email.error_message || undefined
+    created_at: email.created_at || '',
+    error_message: email.error_message || undefined,
+    gmail_thread_id: email.email_logs?.[0]?.gmail_thread_id || null
   }));
+}
+
+export async function getCampaignNumber(campaignId: string): Promise<{ number: number; total: number }> {
+  const supabase = await createSupabaseClientWithClerkToken();
+  const authData = await auth();
+  const userId = authData.userId;
+
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  // Get all user's campaigns sorted by creation date (oldest first)
+  const { data: allCampaigns, error } = await supabase
+    .from('campaigns')
+    .select('id, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching user campaigns:', error);
+    throw new Error('Failed to fetch campaigns');
+  }
+
+  if (!allCampaigns || allCampaigns.length === 0) {
+    return { number: 1, total: 1 };
+  }
+
+  // Find the position of the current campaign (1-indexed)
+  const campaignIndex = allCampaigns.findIndex(campaign => campaign.id === campaignId);
+  
+  if (campaignIndex === -1) {
+    throw new Error('Campaign not found');
+  }
+
+  return {
+    number: campaignIndex + 1, // 1-indexed
+    total: allCampaigns.length
+  };
 }

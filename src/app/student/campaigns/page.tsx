@@ -179,9 +179,9 @@ export default function StudentCampaignsPage() { // Renamed component for clarit
                           {getInterestsLabel(campaign.type || 'research')}
                         </Text>                        <Column gap="4">
                           {campaign.research_interests?.slice(0, 2).map((interest, idx) => (
-                            <Badge paddingY="4" shadow={undefined} paddingX="8" key={idx}>
+                            <Column paddingY="4" fitWidth radius="m" border="neutral-alpha-medium" shadow={undefined} paddingX="8" key={idx}>
                               {interest}
-                            </Badge>
+                            </Column>
                           ))}
                           {(campaign.research_interests?.length || 0) > 2 && (
                             <Text variant="body-default-xs" onBackground="neutral-weak">
