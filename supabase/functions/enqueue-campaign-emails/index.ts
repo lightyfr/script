@@ -57,10 +57,10 @@ function getSearchKeywords(interests: string[]): string[] {
   )).filter(Boolean);
 }
 
-// Feature flag to enable/disable scraped professors
+// Feature flag to enable/disable scraped professors (only for research campaigns)
 const USE_SCRAPED_PROFESSORS = true;
-// Percentage of emails to get from scraped professors (0-100)
-const SCRAPED_PROFESSORS_RATIO = 0.5; // 50% from scraped, 50% from Gemini
+// Percentage of emails to get from scraped professors for research campaigns (0-100)
+const SCRAPED_PROFESSORS_RATIO = 0.5; // 50% from scraped, 50% from Gemini (research only)
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -232,8 +232,6 @@ async function findProfessorsWithGemini(
   campaignType: CampaignType,
   interests: string[], 
   universities: string[] = [],
-  companies: string[] = [],
-  roles: string[] = [],
   customPrompt: string = "",
   max_emails: number
 ): Promise<any[]> {
@@ -241,8 +239,6 @@ async function findProfessorsWithGemini(
     const prompt = getPromptForCampaign(campaignType, {
       interests,
       universities,
-      companies,
-      roles,
       customPrompt,
       maxEmails: max_emails
     });
@@ -474,13 +470,15 @@ serve(async (req: Request) => {
       department: string;
       researchAreas: string[];
     }> = [];
+      // Calculate how many professors to get from each source
+    const campaignType: CampaignType = campaign.type || 'research';
+    const useScraperForThisCampaign = USE_SCRAPED_PROFESSORS && campaignType === 'research';
     
-    // Calculate how many professors to get from each source
-    const maxFromScraper = Math.floor(campaign.max_emails * SCRAPED_PROFESSORS_RATIO);
+    const maxFromScraper = useScraperForThisCampaign ? Math.floor(campaign.max_emails * SCRAPED_PROFESSORS_RATIO) : 0;
     const maxFromGemini = campaign.max_emails - maxFromScraper;
     
-    // Get professors from scraper if enabled
-    if (USE_SCRAPED_PROFESSORS && maxFromScraper > 0) {
+    // Get professors from scraper only for research campaigns
+    if (useScraperForThisCampaign && maxFromScraper > 0) {
       try {
         const scrapedProfessors = await findProfessorsFromScraper(
           campaign.research_interests,
@@ -488,30 +486,29 @@ serve(async (req: Request) => {
           maxFromScraper
         );
         professors = [...professors, ...scrapedProfessors];
-        console.log(`[enqueue-campaign-emails] Found ${scrapedProfessors.length} professors from scraper`);
+        console.log(`[enqueue-campaign-emails] Found ${scrapedProfessors.length} professors from scraper (research campaign)`);
       } catch (error) {
         console.error('[enqueue-campaign-emails] Error getting professors from scraper:', error);
         // Continue with Gemini if scraper fails
       }
-    }
-      // Get remaining professors from Gemini
+    } else if (campaignType !== 'research') {
+      console.log(`[enqueue-campaign-emails] Skipping scraper for ${campaignType} campaign - using Gemini only`);
+    }      // Get remaining professors from Gemini (or all professors for non-research campaigns)
     if (maxFromGemini > 0) {
       try {
         const geminiProfessors = await findProfessorsWithGemini(
           campaign.type || 'research', // Default to research if type is not set
           campaign.research_interests,
           campaign.target_universities,
-          campaign.target_companies || [], // These fields might not exist yet
-          campaign.target_roles || [],
           campaign.custom_prompt || "",
           maxFromGemini
         );
         professors = [...professors, ...geminiProfessors];
-        console.log(`[enqueue-campaign-emails] Found ${geminiProfessors.length} professors from Gemini`);
+        console.log(`[enqueue-campaign-emails] Found ${geminiProfessors.length} contacts from Gemini`);
       } catch (error) {
-        console.error('[enqueue-campaign-emails] Error getting professors from Gemini:', error);
+        console.error('[enqueue-campaign-emails] Error getting contacts from Gemini:', error);
         if (professors.length === 0) {
-          throw new Error('Failed to find professors from any source');
+          throw new Error('Failed to find contacts from any source');
         }
       }
     }

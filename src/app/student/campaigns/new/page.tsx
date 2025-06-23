@@ -23,14 +23,22 @@ import {
 import { useAuth } from "@clerk/nextjs";
 import { createCampaign, getUserInterests } from './actions';
 
+/**
+ * Universal Field Approach:
+ * The same form fields (researchInterests, targetUniversities) serve different 
+ * semantic purposes based on campaign type:
+ * 
+ * RESEARCH: research topics + universities
+ * INTERNSHIP/JOB: roles + companies  
+ * CUSTOM: target audience + organizations
+ */
+
 type CampaignType = 'research' | 'internship' | 'job' | 'custom';
 
 type CampaignFormData = {
   campaignType: CampaignType;
-  researchInterests: string[];
-  targetUniversities: string[];
-  targetCompanies?: string[];
-  targetRoles?: string[];
+  researchInterests: string[]; // Universal field: research topics / internship roles / job roles / target audience
+  targetUniversities: string[]; // Universal field: universities / companies / companies / organizations
   customPrompt?: string;
   maxEmails: number;
 };
@@ -44,8 +52,6 @@ export default function NewCampaignPage() {
     campaignType: 'research',
     researchInterests: [],
     targetUniversities: [],
-    targetCompanies: [],
-    targetRoles: [],
     customPrompt: '',
     maxEmails: 5,
   });
@@ -72,8 +78,14 @@ export default function NewCampaignPage() {
         { label: "5 emails", value: 5 },
       ];
 
-  // Load user's interests on mount
+  // Load user's interests on mount (only for research campaigns)
   useEffect(() => {
+    // Only load interests for research campaigns
+    if (formData.campaignType !== 'research') {
+      setInterestsLoading(false);
+      return;
+    }
+
     let mounted = true;
     setInterestsLoading(true);
     getUserInterests()
@@ -93,7 +105,7 @@ export default function NewCampaignPage() {
         if (mounted) setInterestsLoading(false);
       });
     return () => { mounted = false; };
-  }, [addToast]);
+  }, [addToast, formData.campaignType]);
 
   const handleGeneratePreview = async () => {
     if (formData.campaignType === 'research' && formData.researchInterests.length === 0) {
@@ -104,7 +116,7 @@ export default function NewCampaignPage() {
       return;
     }
 
-    if ((formData.campaignType === 'internship' || formData.campaignType === 'job') && (!formData.targetRoles || formData.targetRoles.length === 0)) {
+    if ((formData.campaignType === 'internship' || formData.campaignType === 'job') && formData.researchInterests.length === 0) {
       addToast({
         variant: "danger",
         message: `Please add at least one ${formData.campaignType} role to generate a preview.`,
@@ -166,7 +178,7 @@ export default function NewCampaignPage() {
       return;
     }
     
-    if ((formData.campaignType === 'internship' || formData.campaignType === 'job') && (!formData.targetRoles || formData.targetRoles.length === 0)) {
+    if ((formData.campaignType === 'internship' || formData.campaignType === 'job') && formData.researchInterests.length === 0) {
       addToast({
         variant: "danger",
         message: `Please add at least one ${formData.campaignType} role.`,
@@ -238,9 +250,8 @@ export default function NewCampaignPage() {
                       setFormData({
                         ...formData,
                         campaignType: value as CampaignType,
-                        // Reset template-specific fields when changing campaign type
-                        targetCompanies: [],
-                        targetRoles: [],
+                        researchInterests: [], // Reset interests when changing type
+                        targetUniversities: [], // Reset universities when changing type
                       });
                     }}
                     fillWidth
@@ -248,7 +259,7 @@ export default function NewCampaignPage() {
                 </div>
               </Column>
 
-              {/* Research Interests Section - Only show for research campaigns */}
+              {/* Universal Interests Section - Changes based on campaign type */}
               {formData.campaignType === 'research' && (
                 <Column gap="16">
                   <Heading variant="heading-strong-l">Research Interests</Heading>
@@ -279,14 +290,31 @@ export default function NewCampaignPage() {
                     {formData.campaignType === 'internship' ? 'Internship' : 'Job'} Roles
                   </Heading>
                   <Text onBackground="neutral-weak">
-                    What {formData.campaignType} roles are you interested in?
+                    What {formData.campaignType} roles are you interested in? (e.g., Software Engineer, Product Manager, Data Scientist)
                   </Text>
                   <TagInput
                     id="target-roles"
                     label={`${formData.campaignType === 'internship' ? 'Internship' : 'Job'} Roles`}
-                    value={formData.targetRoles || []}
-                    onChange={(roles) => setFormData({ ...formData, targetRoles: roles })}
+                    value={formData.researchInterests}
+                    onChange={(roles) => setFormData({ ...formData, researchInterests: roles })}
                     placeholder={`Add ${formData.campaignType} roles...`}
+                  />
+                </Column>
+              )}
+
+              {/* Target Audience Section - For custom campaigns */}
+              {formData.campaignType === 'custom' && (
+                <Column gap="16">
+                  <Heading variant="heading-strong-l">Target Audience</Heading>
+                  <Text onBackground="neutral-weak">
+                    Who do you want to reach? (e.g., CTOs, Startup Founders, Researchers, VCs)
+                  </Text>
+                  <TagInput
+                    id="target-audience"
+                    label="Target Audience"
+                    value={formData.researchInterests}
+                    onChange={(audience) => setFormData({ ...formData, researchInterests: audience })}
+                    placeholder="Add target audience types..."
                   />
                 </Column>
               )}
@@ -296,50 +324,48 @@ export default function NewCampaignPage() {
               {/* Target Universities/Companies Section */}
               <Column gap="16">
                 <Heading variant="heading-strong-l">
-                  {formData.campaignType === 'research' ? 'Target Universities' : 'Target ' + (formData.campaignType === 'internship' ? 'Companies for Internships' : 'Companies')}
+                  {formData.campaignType === 'research' ? 'Target Universities' : 
+                   formData.campaignType === 'custom' ? 'Target Organizations' : 'Target Companies'}
                 </Heading>
                 <Text onBackground="neutral-weak">
                   {formData.campaignType === 'research' 
                     ? 'Which universities would you like to target? Leave empty to search all universities.'
+                    : formData.campaignType === 'custom'
+                    ? 'Which organizations would you like to target? Leave empty to search all organizations.'
                     : `Which companies would you like to target for ${formData.campaignType}s? Leave empty to search all companies.`}
                 </Text>
-                {formData.campaignType === 'research' ? (
-                  <TagInput
-                    id="universities"
-                    label="Universities"
-                    value={formData.targetUniversities}
-                    onChange={(universities) => setFormData({ ...formData, targetUniversities: universities })}
-                    placeholder="Add universities..."
-                  />
-                ) : (
-                  <TagInput
-                    id="companies"
-                    label="Companies"
-                    value={formData.targetCompanies || []}
-                    onChange={(companies) => setFormData({ ...formData, targetCompanies: companies })}
-                    placeholder="Add companies..."
-                  />
-                )}
+                <TagInput
+                  id="target-organizations"
+                  label={formData.campaignType === 'research' ? 'Universities' : 
+                         formData.campaignType === 'custom' ? 'Organizations' : 'Companies'}
+                  value={formData.targetUniversities}
+                  onChange={(targets) => setFormData({ ...formData, targetUniversities: targets })}
+                  placeholder={`Add ${formData.campaignType === 'research' ? 'universities' : 
+                                      formData.campaignType === 'custom' ? 'organizations' : 'companies'}...`}
+                />
               </Column>
 
               <Line />
 
               {/* Custom Prompt Section - Only show for custom campaigns */}
               {formData.campaignType === 'custom' && (
-                <Column gap="16">
-                  <Heading variant="heading-strong-l">Custom Email Prompt</Heading>
-                  <Text onBackground="neutral-weak">
-                    Write your custom email template. You can use placeholders like {'{name}'} and {'{university}'}.
-                  </Text>
-                  <Textarea
-                    id="custom-prompt"
-                    label="Email Template"
-                    value={formData.customPrompt || ''}
-                    onChange={(e) => setFormData({ ...formData, customPrompt: e.target.value })}
-                    placeholder="Dear Professor {last_name}, I'm interested in your work on..."
-                    rows={8}
-                  />
-                </Column>
+                <>
+                  <Line />
+                  <Column gap="16">
+                    <Heading variant="heading-strong-l">Custom Outreach Details</Heading>
+                    <Text onBackground="neutral-weak">
+                      Describe the purpose of your outreach and what you're looking for. This helps our AI find the right contacts and generate appropriate emails.
+                    </Text>
+                    <Textarea
+                      id="custom-prompt"
+                      label=""
+                      value={formData.customPrompt || ''}
+                      onChange={(e) => setFormData({ ...formData, customPrompt: e.target.value })}
+                      placeholder="I'm looking for mentorship opportunities in AI/ML, seeking advice on transitioning into tech, interested in collaboration on open source projects, etc."
+                      rows={6}
+                    />
+                  </Column>
+                </>
               )}
 
               <Line />
@@ -388,7 +414,7 @@ export default function NewCampaignPage() {
                   disabled={
                     (formData.campaignType === 'research' && formData.researchInterests.length === 0) ||
                     ((formData.campaignType === 'internship' || formData.campaignType === 'job') && 
-                      (!formData.targetRoles || formData.targetRoles.length === 0)) ||
+                      formData.researchInterests.length === 0) ||
                     (formData.campaignType === 'custom' && (!formData.customPrompt || formData.customPrompt.trim() === '')) ||
                     isGeneratingPreview
                   }
@@ -407,7 +433,7 @@ export default function NewCampaignPage() {
                   disabled={
                     (formData.campaignType === 'research' && formData.researchInterests.length === 0) ||
                     ((formData.campaignType === 'internship' || formData.campaignType === 'job') && 
-                      (!formData.targetRoles || formData.targetRoles.length === 0)) ||
+                      formData.researchInterests.length === 0) ||
                     (formData.campaignType === 'custom' && (!formData.customPrompt || formData.customPrompt.trim() === '')) ||
                     interestsLoading
                   }

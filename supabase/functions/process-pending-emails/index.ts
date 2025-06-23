@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { generateEmailPrompt, generateSubjectLine, type CampaignType } from "./templates.ts";
 
 /**
  * Process Pending Emails Edge Function
@@ -37,9 +38,10 @@ interface Professor {
 interface Campaign {
   id: string;
   user_id: string;
+  type: CampaignType;
   research_interests: string[];
   target_universities: string[];
-  email_template: string;
+  custom_prompt?: string;
   max_emails: number;
   status: string;
 }
@@ -219,45 +221,26 @@ async function generatePersonalizedEmailWithResume(
   resumeUrl: string | null,
   geminiApiKey: string,
   supabase: any,
-  studentInfo: { name: string; email: string }
+  studentInfo: { name: string; email: string },
+  campaign: Campaign
 ): Promise<string> {
-  // Compose a prompt for Gemini to write a fully personalized, natural email
-  let promptText = `
-  You are an AI assistant helping a student write a highly personalized, professional outreach email to a professor.
+  // Get the campaign type, defaulting to 'research' for backwards compatibility
+  const campaignType: CampaignType = campaign.type || 'research';
+  
+  // Generate the campaign-specific prompt using templates
+  const promptText = generateEmailPrompt(
+    campaignType,
+    {
+      name: professor.name,
+      email: professor.email,
+      university: professor.university,
+      department: professor.department,
+      researchAreas: professor.researchAreas,
+    },
+    studentInfo,
+    campaign
+  );
 
-  Whatever you generate are final emails sent to proffessors, so you must be careful not to have any placeholders or instructions in the email.
-  
-  Student Information:
-  - Name: ${studentInfo.name}
-  - Email: ${studentInfo.email}
-  
-  Professor's Information:
-  - Name: ${professor.name}
-  - University: ${professor.university}
-  - Department: ${professor.department}
-  - Research Areas: ${professor.researchAreas.join(", ")}
-  
-  The student's resume is provided below. Use the resume to extract and include specific, relevant skills, projects, and experiences.
-  
-  Write the email as if the student is writing it themselves, in a natural, engaging, and professional tone.
-  
-  Strict requirements:
-  - Email needs to be short and concise, clearly label the ask and what the student can offer, offer data analysis help and show your not dead weight.
-  - Do NOT leave any template language, placeholders, or instructions in the email.
-  - The recipient wont see the resume attached, so do not directly reference it and dont say stuff like "as you can see" or "as you can see in my resume". 
-  - Fill in every field with real, specific details from the resume and the professor's research.
-  - Use clean whitespace and bullet points where appropriate.
-  - Researchers are busy, so make your email short and to the point.
-  - Mention a specific publication, project, or research area of the professor if possible.
-  - Summarize 1-2 relevant skills and 1-2 relevant projects or experiences from the student's resume.
-  - The email must be ready to send as-is, with all details filled in (no placeholders).
-  - Do NOT include any commentary, instructions, or formatting outside the email body.
-  - Do NOT include any phrases insinuating you are a generated response like "Okay here is your response" or "Here is your email"
-  - End with the student's real name and contact information in the signature.
-  - Markdown is not supported
-  - Do NOT include a subject line in your response
-  - Must not contain characters outside of the Latin1 range.
-  `;
   if (!resumeUrl) {
     // fallback to text-only prompt
     console.log('DEBUG: no resumeUrl, using text-only prompt');
@@ -793,9 +776,7 @@ serve(async (req: Request) => {
             ? `${userInfo.firstName} ${userInfo.lastName}`
             : userInfo?.firstName || userInfo?.lastName || "";
           const studentEmail = userInfo?.email || "";
-          const accessToken = await getValidGmailAccessToken(supabase, campaign.user_id);
-    
-          const personalizedEmail = await rateLimitedRequest(key, () => 
+          const accessToken = await getValidGmailAccessToken(supabase, campaign.user_id);          const personalizedEmail = await rateLimitedRequest(key, () => 
             generatePersonalizedEmailWithResume(
               {
                 name: emailJob.professor_name,
@@ -807,11 +788,25 @@ serve(async (req: Request) => {
               studentProfile?.resume_url || null,
               key,
               supabase,
-              { name: studentName, email: studentEmail }
+              { name: studentName, email: studentEmail },
+              campaign
             )
           );
-    
-          const emailSubject = `Research Opportunity Inquiry - ${emailJob.research_areas?.[0] || "Research"}`;
+
+          // Generate campaign-specific subject line
+          const campaignType: CampaignType = campaign.type || 'research';
+          const emailSubject = generateSubjectLine(
+            campaignType,
+            {
+              name: emailJob.professor_name,
+              email: emailJob.professor_email,
+              university: emailJob.university,
+              department: emailJob.department,
+              researchAreas: emailJob.research_areas,
+            },
+            { name: studentName, email: studentEmail },
+            campaign
+          );
           const emailWithTracking = `To: ${emailJob.professor_email}\n` +
                                     `From: ${studentEmail}\n` +
                                     `Subject: ${emailSubject}\n` +

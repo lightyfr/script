@@ -1,3 +1,25 @@
+
+/**
+ * Universal field mapping for different campaign types:
+ * 
+ * RESEARCH:
+ * - interests: Research areas/topics
+ * - universities: Target universities
+ * 
+ * INTERNSHIP: 
+ * - interests: Internship roles/positions
+ * - universities: Target companies
+ * 
+ * JOB:
+ * - interests: Job roles/positions  
+ * - universities: Target companies
+ * 
+ * CUSTOM:
+ * - interests: Target audience/who you're reaching
+ * - universities: Target organizations
+ * - customPrompt: Details of purpose and email context
+ */
+
 export type CampaignType = "research" | "internship" | "job" | "custom";
 
 interface PromptTemplate {
@@ -5,15 +27,12 @@ interface PromptTemplate {
   generatePrompt: (data: {
     interests: string[];
     universities: string[];
-    companies?: string[];
-    roles?: string[];
     customPrompt?: string;
     maxEmails: number;
   }) => string;
 }
 
-export const promptTemplates: Record<CampaignType, PromptTemplate> = {
-  research: {
+export const promptTemplates: Record<CampaignType, PromptTemplate> = {  research: {
     type: "research",
     generatePrompt: ({ interests, universities, maxEmails }) => {
       const interestsStr = interests.join(", ");
@@ -22,108 +41,141 @@ export const promptTemplates: Record<CampaignType, PromptTemplate> = {
       return `Find ${maxEmails} professors who research ${interestsStr}${universitiesStr}.
 For each professor, provide:
 - Full name
-- Email address (must be publicly available on their university website or department page)
+- Email address (from official university sources)
 - University
 - Department
 - Research areas (3-5 key areas)
 
-Write it in a JSON array with these fields:
-{
-  "name": "Professor's full name",
-  "email": "professor@university.edu",
-  "university": "University name",
-  "department": "Department name",
-  "researchAreas": ["Area 1", "Area 2", ...]
-}
+Return your response as a JSON array with this exact format:
+[
+  {
+    "name": "Professor's Full Name",
+    "email": "professor@university.edu",
+    "university": "University Name",
+    "department": "Department Name",
+    "researchAreas": ["Area 1", "Area 2", "Area 3"]
+  }
+]
 
-IMPORTANT: Output ONLY the JSON array. Do NOT include any explanation, commentary, or text before or after the JSON. Do not say anything else. Do not leave any fields null. If you don't know the email address of a professor, don't include that professor in the list. Don't hallucinate and make up professors.
-Only include professors with valid email addresses. If a professor's email is not publicly available, do not include them in the results.`;
+CRITICAL REQUIREMENTS:
+- Output ONLY the JSON array, nothing else
+- Only include professors with publicly available email addresses
+- Do not make up or guess email addresses
+- If you cannot find enough professors with verified emails, return fewer results
+- Focus on quality over quantity`;
     }
-  },
-
-  internship: {
+  },internship: {
     type: "internship",
-    generatePrompt: ({ roles, companies, maxEmails }) => {
-      const rolesStr = roles?.join(", ") || "various internship positions";
-      const companiesStr = companies?.length ? ` at ${companies.join(", ")}` : "";
+    generatePrompt: ({ interests, universities, maxEmails }) => {
+      const rolesStr = interests.join(", ") || "various internship positions";
+      const companiesStr = universities.length > 0 ? ` at ${universities.join(", ")}` : "";
       
       return `Find ${maxEmails} hiring managers, recruiters, or HR professionals who handle internship positions for ${rolesStr}${companiesStr}.
 For each contact, provide:
 - Full name
-- Email address (must be publicly available on company website, LinkedIn, or professional directories)
-- Company
-- Department/Role (e.g., "Human Resources", "Talent Acquisition", "Engineering Manager")
-- Areas of focus (relevant to the internship roles)
+- Professional email address (from official company sources)
+- Company name
+- Their role/department
+- Areas they recruit for
 
-Write it in a JSON array with these fields:
-{
-  "name": "Contact's full name",
-  "email": "contact@company.com",
-  "university": "Company name",
-  "department": "Department/Role",
-  "researchAreas": ["Area 1", "Area 2", ...]
-}
+Return your response as a JSON array with this exact format:
+[
+  {
+    "name": "Full Name",
+    "email": "email@company.com",
+    "university": "Company Name",
+    "department": "Role/Department",
+    "researchAreas": ["Area 1", "Area 2"]
+  }
+]
 
-IMPORTANT: Output ONLY the JSON array. Do NOT include any explanation, commentary, or text before or after the JSON. Do not say anything else. Do not leave any fields null. If you don't know the email address of a contact, don't include that contact in the list. Don't hallucinate and make up contacts.
-Only include contacts with valid email addresses. Focus on people who are likely to handle internship applications or hiring decisions.`;
+CRITICAL REQUIREMENTS:
+- Output ONLY the JSON array, nothing else
+- Only include contacts with publicly available email addresses
+- Do not make up or guess email addresses
+- Focus on people who commonly receive internship applications
+- If you cannot find enough contacts, return fewer results`;
     }
-  },
-
-  job: {
+  },  job: {
     type: "job",
-    generatePrompt: ({ roles, companies, maxEmails }) => {
-      const rolesStr = roles?.join(", ") || "various job positions";
-      const companiesStr = companies?.length ? ` at ${companies.join(", ")}` : "";
+    generatePrompt: ({ interests, universities, maxEmails }) => {
+      const rolesStr = interests.join(", ") || "various job positions";
+      const companiesStr = universities.length > 0 ? ` at ${universities.join(", ")}` : "";
       
       return `Find ${maxEmails} hiring managers, recruiters, or team leads who handle full-time job positions for ${rolesStr}${companiesStr}.
 For each contact, provide:
 - Full name
-- Email address (must be publicly available on company website, LinkedIn, or professional directories)
-- Company
-- Department/Role (e.g., "Engineering Manager", "Talent Acquisition", "VP of Engineering")
-- Areas of focus (relevant to the job roles)
+- Professional email address (from official company sources)
+- Company name
+- Their role/department
+- Areas they recruit for
 
-Write it in a JSON array with these fields:
-{
-  "name": "Contact's full name",
-  "email": "contact@company.com",
-  "university": "Company name",
-  "department": "Department/Role",
-  "researchAreas": ["Area 1", "Area 2", ...]
-}
+Return your response as a JSON array with this exact format:
+[
+  {
+    "name": "Full Name",
+    "email": "email@company.com",
+    "university": "Company Name",
+    "department": "Role/Department",
+    "researchAreas": ["Area 1", "Area 2"]
+  }
+]
 
-IMPORTANT: Output ONLY the JSON array. Do NOT include any explanation, commentary, or text before or after the JSON. Do not say anything else. Do not leave any fields null. If you don't know the email address of a contact, don't include that contact in the list. Don't hallucinate and make up contacts.
-Only include contacts with valid email addresses. Focus on people who are likely to handle job applications or hiring decisions.`;
+CRITICAL REQUIREMENTS:
+- Output ONLY the JSON array, nothing else
+- Only include contacts with publicly available email addresses
+- Do not make up or guess email addresses
+- Focus on people who commonly receive job applications
+- If you cannot find enough contacts, return fewer results`;
     }
-  },
-
-  custom: {
+  },custom: {
     type: "custom",
-    generatePrompt: ({ customPrompt, maxEmails }) => {
+    generatePrompt: ({ interests, universities, customPrompt, maxEmails }) => {
       if (!customPrompt) {
         throw new Error("Custom prompt is required for custom campaign type");
       }
       
-      return `Based on this custom request: "${customPrompt}"
-Find ${maxEmails} relevant contacts who match this criteria.
+      const audienceStr = interests.length > 0 ? ` targeting ${interests.join(", ")}` : "";
+      const organizationsStr = universities.length > 0 ? ` at ${universities.join(", ")}` : "";
+      
+      // Cap the number for custom campaigns to be more reasonable
+      const reasonableMax = Math.min(maxEmails, 15);
+      
+      return `You are helping a student find professional contacts for networking purposes. 
+
+Based on this request: "${customPrompt}"
+
+Find ${maxEmails} publicly listed professionals${audienceStr}${organizationsStr} who would be appropriate to contact for this purpose.
+
+Focus on finding contacts who:
+- Have publicly listed professional email addresses on company websites, department pages, or professional directories
+- Are in positions where they commonly receive professional outreach
+- Match the criteria described in the custom request
+
 For each contact, provide:
 - Full name
-- Email address (must be publicly available)
-- Organization/Company
-- Department/Role
-- Areas of focus or expertise
+- Professional email address (from official sources only)
+- Organization/Company name
+- Their role/department
+- 2-3 relevant areas of expertise
 
-Write it in a JSON array with these fields:
-{
-  "name": "Contact's full name",
-  "email": "contact@organization.com",
-  "university": "Organization name",
-  "department": "Department/Role",
-  "researchAreas": ["Area 1", "Area 2", ...]
-}
+Return your response as a JSON array with this exact format:
+[
+  {
+    "name": "Full Name",
+    "email": "email@company.com",
+    "university": "Organization Name",
+    "department": "Role/Department",
+    "researchAreas": ["Area 1", "Area 2"]
+  }
+]
 
-IMPORTANT: Output ONLY the JSON array. Do NOT include any explanation, commentary, or text before or after the JSON. Do not say anything else. Do not leave any fields null. If you don't know the email address of a contact, don't include that contact in the list. Don't hallucinate and make up contacts.
-Only include contacts with valid email addresses.`;
+CRITICAL REQUIREMENTS:
+- Output ONLY the JSON array, nothing else
+- Only include contacts with publicly available email addresses
+- Do not make up or guess email addresses
+- If you cannot find enough contacts with verified emails, return fewer results
+- Focus on quality over quantity`;
     }
   }
 };
@@ -133,8 +185,6 @@ export function getPromptForCampaign(
   data: {
     interests: string[];
     universities: string[];
-    companies?: string[];
-    roles?: string[];
     customPrompt?: string;
     maxEmails: number;
   }
