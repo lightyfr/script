@@ -6,7 +6,7 @@ import type { Database, Tables } from '@/database.types';
 
 export type CampaignDisplayData = Pick<
   Tables<'campaigns'>,
-  'id' | 'created_at' | 'status' | 'research_interests' | 'target_universities' | 'max_emails'
+  'id' | 'created_at' | 'status' | 'research_interests' | 'target_universities' | 'max_emails' | 'type' 
 >;
 
 export async function getStudentCampaigns(): Promise<CampaignDisplayData[]> {
@@ -22,7 +22,7 @@ export async function getStudentCampaigns(): Promise<CampaignDisplayData[]> {
 
   const { data: campaigns, error } = await supabase
     .from('campaigns')
-    .select('id, created_at, status, research_interests, target_universities, max_emails')
+    .select('id, created_at, status, type, research_interests, target_universities, max_emails')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 

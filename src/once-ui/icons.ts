@@ -42,7 +42,8 @@ import {
 
 import { RiVisaLine } from "react-icons/ri";
 import { LuLayoutDashboard } from "react-icons/lu";
-
+import { CiGrid41 } from "react-icons/ci";
+import { FaList } from "react-icons/fa6";
 import { FaDiscord, FaGithub, FaGoogle } from "react-icons/fa6";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa6";
 import { HiOutlineMailOpen } from "react-icons/hi";
@@ -101,6 +102,8 @@ export const iconLibrary: Record<string, IconType> = {
   warning: IoWarning,
   danger: MdOutlineDangerous,
   clock: FaRegClock,
+  grid: CiGrid41,
+  list: FaList,
 };
 
 export type IconLibrary = typeof iconLibrary;
