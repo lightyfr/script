@@ -204,16 +204,14 @@ export default function StudentCampaignsPage() { // Renamed component for clarit
                           {campaign.target_universities?.join(', ') || `No ${getTargetsLabel(campaign.type || 'research').toLowerCase()} specified`}
                         </Text>
                       </Column>
-                    </Column>
-
-                    {/* Footer */}
+                    </Column>                    {/* Footer */}
                     <Row fillWidth horizontal="space-between" vertical="center" paddingTop="8" borderTop="neutral-alpha-weak">
                       <Column gap="2">
                         <Text variant="label-default-xs" onBackground="neutral-weak">
-                          Max Emails
+                          Emails Sent
                         </Text>
                         <Text variant="body-strong-s">
-                          {campaign.max_emails || 'Unlimited'}
+                          {campaign.sentEmails}/{campaign.max_emails || '∞'}
                         </Text>
                       </Column>
                       <Icon name="chevronRight" size="s" />
@@ -262,16 +260,14 @@ export default function StudentCampaignsPage() { // Renamed component for clarit
                       }}>
                         {campaign.target_universities?.join(', ') || `No ${getTargetsLabel(campaign.type || 'research').toLowerCase()} specified`}
                       </Text>
-                    </Column>
-
-                    {/* Stats */}
+                    </Column>                    {/* Stats */}
                     <Row gap="32" vertical="center">
                       <Column gap="4" horizontal="center">
                         <Text variant="label-default-s" onBackground="neutral-weak">
-                          Max Emails
+                          Emails Sent
                         </Text>
                         <Text variant="body-strong-m">
-                          {campaign.max_emails || '∞'}
+                          {campaign.sentEmails}/{campaign.max_emails || '∞'}
                         </Text>
                       </Column>
                       <Column gap="4" horizontal="center">
