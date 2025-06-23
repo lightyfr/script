@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { getPromptForCampaign, type CampaignType } from "./templates.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -226,28 +227,37 @@ async function findProfessorsWithOpenAlex(interests: string[], universities: str
   return Array.from(authorsMap.values());
 }
 
-// Robust Gemini-powered professor search with error handling
-async function findProfessorsWithGemini(interests: string[], universities: string[] = [], max_emails: number): Promise<any[]> {
-  const interestsStr = interests.join(", ");
-  const universitiesStr = universities.length > 0 ? ` at ${universities.join(", ")}` : "";
-  const prompt = `Find ${max_emails} professors who research ${interestsStr}${universitiesStr}.
-  For each professor, provide:
-  - Full name
-  - Email address (must be publicly available on their university website or department page)
-  - University
-  - Department
-  - Research areas (3-5 key areas)
-  
-  Write it in a JSON array with these fields:\n{\n  \"name\": \"Professor's full name\",\n  \"email\": \"professor@university.edu\",\n  \"university\": \"University name\",\n  \"department\": \"Department name\",\n  \"researchAreas\": [\"Area 1\", \"Area 2\", ...]\n}\n\n
-  IMPORTANT: Output ONLY the JSON array. Do NOT include any explanation, commentary, or text before or after the JSON. Do not say anything else Do not leave any fields null. If you don't know the email address of a professor, dont include that professor in the list. Dont hallucinate and make up professors
-  Only include professors with valid email addresses. If a professor's email is not publicly available, do not include them in the results.`;
-     const response = await callGemini(prompt);
-  let jsonStr: string;
+// Robust Gemini-powered professor search with error handling - now supports different campaign types
+async function findProfessorsWithGemini(
+  campaignType: CampaignType,
+  interests: string[], 
+  universities: string[] = [],
+  companies: string[] = [],
+  roles: string[] = [],
+  customPrompt: string = "",
+  max_emails: number
+): Promise<any[]> {
   try {
-    jsonStr = extractJsonArray(response);
-    return JSON.parse(jsonStr);
-  } catch (e) {
-    console.error("[findProfessorsWithGemini] Failed to extract or parse JSON array from Gemini response:", e, response);
+    const prompt = getPromptForCampaign(campaignType, {
+      interests,
+      universities,
+      companies,
+      roles,
+      customPrompt,
+      maxEmails: max_emails
+    });
+    
+    const response = await callGemini(prompt);
+    let jsonStr: string;
+    try {
+      jsonStr = extractJsonArray(response);
+      return JSON.parse(jsonStr);
+    } catch (e) {
+      console.error(`[findProfessorsWithGemini] Failed to extract or parse JSON array from Gemini response:`, e, response);
+      return [];
+    }
+  } catch (error) {
+    console.error(`[findProfessorsWithGemini] Error:`, error);
     return [];
   }
 }
@@ -385,29 +395,76 @@ async function findProfessorsFromScraper(
 serve(async (req: Request) => {
   const startTime = Date.now();
   try {
-    const { data: campaign, error: campaignError } = await supabase
-    .from("campaigns")
-    .select("*")
-    .eq("status", "pending_processing")
-    .single()
-    .limit(1);
-    if (campaignError) {
-      console.log(`[enqueue-campaign-emails] No campaigns found with status 'pending_processing'`);
-      return new Response(JSON.stringify({ error: "No campaigns found with status 'pending_processing'" }), {
-      });
-    }
-    const { error: campaignUpdateError } = await supabase.from("campaigns").update({ status: "queued" }).eq("id", campaign.id);
+    let campaign: any;
+    let campaignError: any;
 
-    if (campaignUpdateError) {
-      console.error(`[enqueue-campaign-emails] Failed to update campaign status to 'queued':`, campaignUpdateError);
-      throw new Error(`Failed to update campaign status: ${campaignUpdateError.message}`);
+    // Check if campaign data is provided in the request body
+    let requestBody: any = null;
+    try {
+      requestBody = await req.json();
+    } catch (e) {
+      // No request body or invalid JSON, will proceed with database lookup
     }
-    console.log(`[enqueue-campaign-emails] Found campaignId: ${campaign.id}`);
-    // Get campaign details
+
+    if (requestBody && requestBody.campaignId) {
+      // Use campaign ID from request body
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("*")
+        .eq("id", requestBody.campaignId)
+        .single();
+      campaign = data;
+      campaignError = error;
+    } else if (requestBody && requestBody.campaign) {
+      // Use campaign data directly from request body
+      campaign = requestBody.campaign;
+      campaignError = null;
+    } else {
+      // Fallback to automatic database lookup
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("*")
+        .eq("status", "pending_processing")
+        .single()
+        .limit(1);
+      campaign = data;
+      campaignError = error;
+    }
+
     if (campaignError) {
-      console.error(`[enqueue-campaign-emails] Failed to fetch campaign for id ${campaign.id}:`, campaignError);
-      throw new Error(`Failed to fetch campaign: ${campaignError.message}`);
+      console.log(`[enqueue-campaign-emails] No campaigns found or error fetching campaign:`, campaignError);
+      return new Response(JSON.stringify({ error: "No campaigns found or error fetching campaign" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 404
+      });
+    }    if (!campaign) {
+      throw new Error("Invalid campaign data in request body");
     }
+
+    // Validate required campaign fields
+    if (!campaign.research_interests || !Array.isArray(campaign.research_interests)) {
+      throw new Error("Campaign must have research_interests array");
+    }
+    
+    if (!campaign.max_emails || typeof campaign.max_emails !== 'number') {
+      throw new Error("Campaign must have valid max_emails number");
+    }
+
+    if (!campaign.user_id) {
+      throw new Error("Campaign must have user_id");
+    }
+
+    // Update campaign status to 'queued' if it's from database
+    if (campaign.id && !requestBody?.campaign) {
+      const { error: campaignUpdateError } = await supabase.from("campaigns").update({ status: "queued" }).eq("id", campaign.id);
+
+      if (campaignUpdateError) {
+        console.error(`[enqueue-campaign-emails] Failed to update campaign status to 'queued':`, campaignUpdateError);
+        throw new Error(`Failed to update campaign status: ${campaignUpdateError.message}`);
+      }
+    }
+
+    console.log(`[enqueue-campaign-emails] Found campaignId: ${campaign.id || 'from request body'}`);
     console.log(`[enqueue-campaign-emails] Campaign loaded:`, campaign);
     // Find professors from multiple sources
     let professors: Array<{
@@ -437,13 +494,16 @@ serve(async (req: Request) => {
         // Continue with Gemini if scraper fails
       }
     }
-    
-    // Get remaining professors from Gemini
+      // Get remaining professors from Gemini
     if (maxFromGemini > 0) {
       try {
         const geminiProfessors = await findProfessorsWithGemini(
+          campaign.type || 'research', // Default to research if type is not set
           campaign.research_interests,
           campaign.target_universities,
+          campaign.target_companies || [], // These fields might not exist yet
+          campaign.target_roles || [],
+          campaign.custom_prompt || "",
           maxFromGemini
         );
         professors = [...professors, ...geminiProfessors];
@@ -491,8 +551,11 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ success: true, count: 0, message: "No new professors to contact." }), {
         headers: { "Content-Type": "application/json" },
       });
+    }    // Insert a pending_emails row for each professor (only if campaign has an ID)
+    if (!campaign.id) {
+      throw new Error("Campaign must have an ID to insert pending emails");
     }
-    // Insert a pending_emails row for each professor
+
     const inserts = filteredProfessors.slice(0, campaign.max_emails).map((prof: any) => ({
       campaign_id: campaign.id,
       professor_name: prof.name,
@@ -504,12 +567,26 @@ serve(async (req: Request) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }));
-    console.log(`[enqueue-campaign-emails] Prepared inserts (after duplicate filter):`, inserts);
-    const { error: insertError } = await supabase.from("pending_emails").insert(inserts);
+    console.log(`[enqueue-campaign-emails] Prepared inserts (after duplicate filter):`, inserts);    const { error: insertError } = await supabase.from("pending_emails").insert(inserts);
     if (insertError) {
       console.error(`[enqueue-campaign-emails] Failed to insert pending_emails:`, insertError);
       throw new Error(`Failed to enqueue emails: ${insertError.message}`);
     }
+
+    // Update campaign status to 'processing' after successfully inserting all pending emails
+    const { error: statusUpdateError } = await supabase
+      .from("campaigns")
+      .update({ status: "processing", updated_at: new Date().toISOString() })
+      .eq("id", campaign.id);
+
+    if (statusUpdateError) {
+      console.error(`[enqueue-campaign-emails] Failed to update campaign status to 'processing':`, statusUpdateError);
+      // Don't throw error here since emails were successfully queued
+      // Just log the warning and continue
+    } else {
+      console.log(`[enqueue-campaign-emails] Updated campaign ${campaign.id} status to 'processing'`);
+    }
+
     const duration = Date.now() - startTime;
     console.log(`[enqueue-campaign-emails] Execution time: ${duration} ms, processed campaignId: ${campaign.id}, inserted: ${inserts.length}`);
     return new Response(JSON.stringify({ success: true, count: inserts.length}), {

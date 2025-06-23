@@ -28,8 +28,12 @@ async function createSupabaseClientWithClerkToken() {
 }
 
 type CampaignData = {
+  campaignType: 'research' | 'internship' | 'job' | 'custom';
   researchInterests: string[];
   targetUniversities: string[];
+  targetCompanies?: string[];
+  targetRoles?: string[];
+  customPrompt?: string;
   maxEmails: number;
 };
 
@@ -41,12 +45,12 @@ export async function createCampaign(campaignData: CampaignData) {
   const clerkUserId = user.id;
   const supabase = await createSupabaseClientWithClerkToken();
 
-  try {
-    // 1. Create campaign record
+  try {    // 1. Create campaign record
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
       .insert({
         user_id: clerkUserId,
+        type: campaignData.campaignType,
         research_interests: campaignData.researchInterests,
         target_universities: campaignData.targetUniversities,
         max_emails: campaignData.maxEmails,

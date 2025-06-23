@@ -18,13 +18,20 @@ import {
   Select,
   Tag,
   Dialog,
+  SegmentedControl,
 } from "@/once-ui/components";
 import { useAuth } from "@clerk/nextjs";
 import { createCampaign, getUserInterests } from './actions';
 
+type CampaignType = 'research' | 'internship' | 'job' | 'custom';
+
 type CampaignFormData = {
+  campaignType: CampaignType;
   researchInterests: string[];
   targetUniversities: string[];
+  targetCompanies?: string[];
+  targetRoles?: string[];
+  customPrompt?: string;
   maxEmails: number;
 };
 
@@ -34,8 +41,12 @@ export default function NewCampaignPage() {
   const { has } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<CampaignFormData>({
+    campaignType: 'research',
     researchInterests: [],
     targetUniversities: [],
+    targetCompanies: [],
+    targetRoles: [],
+    customPrompt: '',
     maxEmails: 5,
   });
   const [interestsLoading, setInterestsLoading] = useState(true);
@@ -85,10 +96,26 @@ export default function NewCampaignPage() {
   }, [addToast]);
 
   const handleGeneratePreview = async () => {
-    if (formData.researchInterests.length === 0) {
+    if (formData.campaignType === 'research' && formData.researchInterests.length === 0) {
       addToast({
         variant: "danger",
         message: "Please add at least one research interest to generate a preview.",
+      });
+      return;
+    }
+
+    if ((formData.campaignType === 'internship' || formData.campaignType === 'job') && (!formData.targetRoles || formData.targetRoles.length === 0)) {
+      addToast({
+        variant: "danger",
+        message: `Please add at least one ${formData.campaignType} role to generate a preview.`,
+      });
+      return;
+    }
+
+    if (formData.campaignType === 'custom' && (!formData.customPrompt || formData.customPrompt.trim() === '')) {
+      addToast({
+        variant: "danger",
+        message: "Please provide a custom email template to generate a preview.",
       });
       return;
     }
@@ -127,11 +154,30 @@ export default function NewCampaignPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (formData.researchInterests.length === 0) {
+    await submitCampaign();
+  };
+
+  const submitCampaign = async () => {
+    if (formData.campaignType === 'research' && formData.researchInterests.length === 0) {
       addToast({
         variant: "danger",
         message: "Please add at least one research interest.",
+      });
+      return;
+    }
+    
+    if ((formData.campaignType === 'internship' || formData.campaignType === 'job') && (!formData.targetRoles || formData.targetRoles.length === 0)) {
+      addToast({
+        variant: "danger",
+        message: `Please add at least one ${formData.campaignType} role.`,
+      });
+      return;
+    }
+
+    if (formData.campaignType === 'custom' && (!formData.customPrompt || formData.customPrompt.trim() === '')) {
+      addToast({
+        variant: "danger",
+        message: "Please provide a custom email template.",
       });
       return;
     }
@@ -174,44 +220,127 @@ export default function NewCampaignPage() {
         ) : (
           <form onSubmit={handleSubmit}>
             <Column gap="32">
-              {/* Research Interests Section */}
+              {/* Campaign Type Selector */}
               <Column gap="16">
-                <Heading variant="heading-strong-l">Research Interests</Heading>
+                <Heading variant="heading-strong-l">Campaign Type</Heading>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <SegmentedControl
+                    buttons={[
+                      { label: 'Researcher', value: 'research' },
+                      { label: 'Internship', value: 'internship' },
+                      { label: 'Job', value: 'job' },
+                      { label: 'Custom', value: 'custom' },
+                    ]}
+                    selected={formData.campaignType}
+                    onToggle={(value, e) => {
+                      e?.preventDefault();
+                      e?.stopPropagation();
+                      setFormData({
+                        ...formData,
+                        campaignType: value as CampaignType,
+                        // Reset template-specific fields when changing campaign type
+                        targetCompanies: [],
+                        targetRoles: [],
+                      });
+                    }}
+                    fillWidth
+                  />
+                </div>
+              </Column>
+
+              {/* Research Interests Section - Only show for research campaigns */}
+              {formData.campaignType === 'research' && (
+                <Column gap="16">
+                  <Heading variant="heading-strong-l">Research Interests</Heading>
+                  <Text onBackground="neutral-weak">
+                    What areas of research are you interested in? This will help us find relevant professors.
+                  </Text>
+                  {interestsLoading ? (
+                    <Row gap="8" vertical="center">
+                      <Spinner size="m" />
+                      <Text>Loading your interests...</Text>
+                    </Row>
+                  ) : (
+                    <TagInput
+                      id="research-interests"
+                      label="Research Interests"
+                      value={formData.researchInterests}
+                      onChange={(interests) => setFormData({ ...formData, researchInterests: interests })}
+                      placeholder="Add research interests..."
+                    />
+                  )}
+                </Column>
+              )}
+
+              {/* Target Roles Section - For job/internship campaigns */}
+              {(formData.campaignType === 'internship' || formData.campaignType === 'job') && (
+                <Column gap="16">
+                  <Heading variant="heading-strong-l">
+                    {formData.campaignType === 'internship' ? 'Internship' : 'Job'} Roles
+                  </Heading>
+                  <Text onBackground="neutral-weak">
+                    What {formData.campaignType} roles are you interested in?
+                  </Text>
+                  <TagInput
+                    id="target-roles"
+                    label={`${formData.campaignType === 'internship' ? 'Internship' : 'Job'} Roles`}
+                    value={formData.targetRoles || []}
+                    onChange={(roles) => setFormData({ ...formData, targetRoles: roles })}
+                    placeholder={`Add ${formData.campaignType} roles...`}
+                  />
+                </Column>
+              )}
+
+              <Line />
+
+              {/* Target Universities/Companies Section */}
+              <Column gap="16">
+                <Heading variant="heading-strong-l">
+                  {formData.campaignType === 'research' ? 'Target Universities' : 'Target ' + (formData.campaignType === 'internship' ? 'Companies for Internships' : 'Companies')}
+                </Heading>
                 <Text onBackground="neutral-weak">
-                  What areas of research are you interested in? This will help us find relevant professors.
+                  {formData.campaignType === 'research' 
+                    ? 'Which universities would you like to target? Leave empty to search all universities.'
+                    : `Which companies would you like to target for ${formData.campaignType}s? Leave empty to search all companies.`}
                 </Text>
-                {interestsLoading ? (
-                  <Row gap="8" vertical="center">
-                    <Spinner size="m" />
-                    <Text>Loading your interests...</Text>
-                  </Row>
+                {formData.campaignType === 'research' ? (
+                  <TagInput
+                    id="universities"
+                    label="Universities"
+                    value={formData.targetUniversities}
+                    onChange={(universities) => setFormData({ ...formData, targetUniversities: universities })}
+                    placeholder="Add universities..."
+                  />
                 ) : (
                   <TagInput
-                    id="research-interests"
-                    label="Research Interests"
-                    value={formData.researchInterests}
-                    onChange={(interests) => setFormData({ ...formData, researchInterests: interests })}
-                    placeholder="Add research interests..."
+                    id="companies"
+                    label="Companies"
+                    value={formData.targetCompanies || []}
+                    onChange={(companies) => setFormData({ ...formData, targetCompanies: companies })}
+                    placeholder="Add companies..."
                   />
                 )}
               </Column>
 
               <Line />
 
-              {/* Target Universities Section */}
-              <Column gap="16">
-                <Heading variant="heading-strong-l">Target Universities</Heading>
-                <Text onBackground="neutral-weak">
-                  Which universities would you like to target? Leave empty to search all universities.
-                </Text>
-                <TagInput
-                  id="universities"
-                  label="Universities"
-                  value={formData.targetUniversities}
-                  onChange={(universities) => setFormData({ ...formData, targetUniversities: universities })}
-                  placeholder="Add universities..."
-                />
-              </Column>
+              {/* Custom Prompt Section - Only show for custom campaigns */}
+              {formData.campaignType === 'custom' && (
+                <Column gap="16">
+                  <Heading variant="heading-strong-l">Custom Email Prompt</Heading>
+                  <Text onBackground="neutral-weak">
+                    Write your custom email template. You can use placeholders like {'{name}'} and {'{university}'}.
+                  </Text>
+                  <Textarea
+                    id="custom-prompt"
+                    label="Email Template"
+                    value={formData.customPrompt || ''}
+                    onChange={(e) => setFormData({ ...formData, customPrompt: e.target.value })}
+                    placeholder="Dear Professor {last_name}, I'm interested in your work on..."
+                    rows={8}
+                  />
+                </Column>
+              )}
 
               <Line />
 
@@ -256,7 +385,13 @@ export default function NewCampaignPage() {
                 <Button
                   label={isGeneratingPreview ? "Generating Preview..." : "Generate Example Email"}
                   onClick={handleGeneratePreview}
-                  disabled={formData.researchInterests.length === 0 || isGeneratingPreview}
+                  disabled={
+                    (formData.campaignType === 'research' && formData.researchInterests.length === 0) ||
+                    ((formData.campaignType === 'internship' || formData.campaignType === 'job') && 
+                      (!formData.targetRoles || formData.targetRoles.length === 0)) ||
+                    (formData.campaignType === 'custom' && (!formData.customPrompt || formData.customPrompt.trim() === '')) ||
+                    isGeneratingPreview
+                  }
                   variant="secondary"
                   size="m"
                 />
@@ -265,12 +400,20 @@ export default function NewCampaignPage() {
               <Line />
 
               {/* Submit Button */}
-              <Button
-                label="Create Campaign"
-                type="submit"
-                disabled={formData.researchInterests.length === 0 || interestsLoading}
-                size="l"
-              />
+              <Row gap="16">
+                <Button
+                  label="Create Campaign"
+                  type="submit"
+                  disabled={
+                    (formData.campaignType === 'research' && formData.researchInterests.length === 0) ||
+                    ((formData.campaignType === 'internship' || formData.campaignType === 'job') && 
+                      (!formData.targetRoles || formData.targetRoles.length === 0)) ||
+                    (formData.campaignType === 'custom' && (!formData.customPrompt || formData.customPrompt.trim() === '')) ||
+                    interestsLoading
+                  }
+                  size="l"
+                />
+              </Row>
             </Column>
           </form>
         )}

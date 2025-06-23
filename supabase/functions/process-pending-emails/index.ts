@@ -1,9 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
+/**
+ * Process Pending Emails Edge Function
+ * 
+ * This function processes pending emails from the pending_emails table.
+ * It can be invoked as a webhook with optional parameters:
+ * 
+ * Request Body (optional):
+ * {
+ *   "batchSize": number,     // Override default batch size (default: 500)
+ *   "campaignId": string     // Process only emails for specific campaign (optional)
+ * }
+ * 
+ * If no body is provided, processes all pending emails with default batch size.
+ */
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const geminiApiKey = Deno.env.get("GEMINI_API_KEY2") ?? "";
+const geminiApiKey = Deno.env.get("GEMINI_API_KEY") ?? "";
 const geminiApiKey2 = Deno.env.get("GEMINI_API_KEY3") ?? "";
 const geminiApiKey3 = Deno.env.get("GEMINI_API_KEY4") ?? "";
 const geminiApiKey4 = Deno.env.get("GEMINI_API_KEY5") ?? "";
@@ -570,7 +585,7 @@ const rateLimitedMap = async <T, R>(
 };
 
 // Rate limiting configuration
-const REQUESTS_PER_MINUTE_PER_KEY = 80; // Gemini API rate limit per key
+const REQUESTS_PER_MINUTE_PER_KEY = 2000; // Conservative limit with fallback chain (15+10+15+30+unlimited)
 const TOKENS_PER_MINUTE = REQUESTS_PER_MINUTE_PER_KEY * 5; // 5 keys
 const TOKENS_PER_SECOND = TOKENS_PER_MINUTE / 60;
 const BUCKET_SIZE = TOKENS_PER_MINUTE * 2; // Allow for bursts
@@ -583,7 +598,7 @@ interface TokenBucket {
 
 // Initialize token buckets for each key
 const tokenBuckets: Record<string, TokenBucket> = {};
-const apiKeys = [geminiApiKey, geminiApiKey2, geminiApiKey3, geminiApiKey4, geminiApiKey5];
+const apiKeys = [geminiApiKey];
 
 // Initialize token buckets for all API keys
 apiKeys.forEach(key => {
@@ -669,22 +684,56 @@ async function rateLimitedRequest<T>(key: string, fn: () => Promise<T>): Promise
 }
 
 // Batch processing configuration
-const MAX_CONCURRENT_PER_KEY = 2; // Conservative concurrency per key
-const BATCH_SIZE = 20; // Total across all keys
+const MAX_CONCURRENT_PER_KEY = 100; // Conservative concurrency per key
+const BATCH_SIZE = 500; // Total across all keys
 
-serve(async (_req: Request) => {
+serve(async (req: Request) => {
+  const startTime = Date.now();
   console.log("[process-pending-emails] Function invoked");
+  
   try {
-    // Get a batch of pending emails
-    const { data: pendingEmails, error } = await supabase
+    let batchSize = BATCH_SIZE;
+    let campaignId: string | null = null;
+    
+    // Check if request body contains parameters
+    let requestBody: any = null;
+    try {
+      requestBody = await req.json();
+    } catch (e) {
+      // No request body or invalid JSON, will proceed with default behavior
+    }
+    
+    // Extract parameters from request body if provided
+    if (requestBody) {
+      if (requestBody.batchSize && typeof requestBody.batchSize === 'number') {
+        batchSize = requestBody.batchSize;
+      }
+      if (requestBody.campaignId && typeof requestBody.campaignId === 'string') {
+        campaignId = requestBody.campaignId;
+      }
+    }
+    
+    console.log(`[process-pending-emails] Processing with batchSize: ${batchSize}, campaignId: ${campaignId || 'all campaigns'}`);
+    
+    // Build query for pending emails
+    let query = supabase
       .from("pending_emails")
       .select("*")
       .eq("status", "pending")
       .order("created_at", { ascending: true })
-      .limit(BATCH_SIZE);
+      .limit(batchSize);
+    
+    // Filter by campaign ID if provided
+    if (campaignId) {
+      query = query.eq("campaign_id", campaignId);
+    }
+    
+    const { data: pendingEmails, error } = await query;
     if (error) throw new Error(`Failed to fetch pending emails: ${error.message}`);
     if (!pendingEmails || pendingEmails.length === 0) {
-      return new Response(JSON.stringify({ success: true, processed: 0 }), {
+      const duration = Date.now() - startTime;
+      console.log(`[process-pending-emails] No pending emails found. Execution time: ${duration}ms`);
+      return new Response(JSON.stringify({ success: true, processed: 0, message: "No pending emails found" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -841,14 +890,27 @@ serve(async (_req: Request) => {
         } catch (finalizeError) {
           console.error(`[finalize-campaign] Error finalizing campaign ${campaignId}:`, finalizeError);
         }
-      }
-    }   
-    return new Response(JSON.stringify({ success: true, processed: pendingEmails.length }), {
+      }    }   
+    
+    const duration = Date.now() - startTime;
+    console.log(`[process-pending-emails] Successfully processed ${pendingEmails.length} emails. Execution time: ${duration}ms`);
+    return new Response(JSON.stringify({ 
+      success: true, 
+      processed: pendingEmails.length,
+      executionTime: duration,
+      campaignId: campaignId || "all"
+    }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`[process-pending-emails] Error:`, error);
+    console.log(`[process-pending-emails] Execution time (error): ${duration}ms`);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : "Unknown error",
+        executionTime: duration
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
