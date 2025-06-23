@@ -590,3 +590,51 @@ export async function getConnectionStats() {
     monthlyConnectionData
   };
 }
+
+export async function getEmailStatusStats() {
+  const supabase = await createSupabaseClientWithClerkToken();
+  const authData = await auth();
+  const userId = authData.userId;
+
+  if (!userId) return { statusData: [] };
+
+  // Get user's campaigns
+  const { data: userCampaigns } = await supabase
+    .from('campaigns')
+    .select('id')
+    .eq('user_id', userId);
+
+  const campaignIds = userCampaigns?.map(c => c.id) || [];
+
+  if (campaignIds.length === 0) {
+    return { statusData: [] };
+  }
+
+  // Get email logs for user's campaigns
+  const { data: emailLogs, error } = await supabase
+    .from('email_logs')
+    .select('status')
+    .in('campaign_id', campaignIds);
+
+  if (error) {
+    console.error('Error fetching email status stats:', error);
+    return { statusData: [] };
+  }
+
+  // Count statuses
+  const statusCount: Record<string, number> = {};
+  emailLogs?.forEach(log => {
+    if (log.status) {
+      const status = log.status.toLowerCase();
+      statusCount[status] = (statusCount[status] || 0) + 1;
+    }
+  });
+
+  // Transform to chart data
+  const statusData = Object.entries(statusCount).map(([status, count]) => ({
+    status: status.charAt(0).toUpperCase() + status.slice(1),
+    count
+  })).sort((a, b) => b.count - a.count); // Sort by count descending
+
+  return { statusData };
+}

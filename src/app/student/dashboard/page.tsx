@@ -6,8 +6,8 @@ import { Column, Row, Card, Heading, Text, Button, Icon, useToast, Feedback, Tag
 import { LineChart } from "@/once-ui/modules/data/LineChart";
 import { ChartCard } from "@/app/components/chartCard";
 import { PricingTable, useAuth } from "@clerk/nextjs";
-import { getStudentName, getStudentDashboardStats, hasUserGmailToken, getCampaignStatus, getRecentActivity, getConnectionStats } from "./actions";
-import { LineBarChart } from "@once-ui-system/core";
+import { getStudentName, getStudentDashboardStats, hasUserGmailToken, getCampaignStatus, getRecentActivity, getConnectionStats, getEmailStatusStats } from "./actions";
+import { BarChart, LineBarChart } from "@once-ui-system/core";
 
 
 interface ActivityItemProps {
@@ -83,9 +83,11 @@ function StudentDashboardInner() {
       totalCampaigns: 0
     },
     dailyChartData: []
-  });
-  const [connectionStats, setConnectionStats] = useState<{
+  });  const [connectionStats, setConnectionStats] = useState<{
     monthlyConnectionData: Array<{ name: string; activity: number; replies: number, responseRate: number }>;
+  } | null>(null);
+  const [emailStatusStats, setEmailStatusStats] = useState<{
+    statusData: Array<{ status: string; count: number }>;
   } | null>(null);
   const [campaignStatus, setCampaignStatus] = useState<Array<{
     id: string;
@@ -134,11 +136,12 @@ function StudentDashboardInner() {
         });
       }
       const campaigns = await getCampaignStatus();
-      setCampaignStatus(campaigns);
-      const activities = await getRecentActivity();
+      setCampaignStatus(campaigns);      const activities = await getRecentActivity();
       setRecentActivity(activities);
       const connectionData = await getConnectionStats();
       setConnectionStats(connectionData);
+      const emailStatusData = await getEmailStatusStats();
+      setEmailStatusStats(emailStatusData);
       const showFeedback = !(await hasUserGmailToken());
       setShowGmailFeedback(showFeedback);
     } catch (error) {
@@ -158,9 +161,11 @@ function StudentDashboardInner() {
           ...(prev?.stats || {})
         },
         dailyChartData: [],
-      }));
-      setConnectionStats({
+      }));      setConnectionStats({
         monthlyConnectionData: [],
+      });
+      setEmailStatusStats({
+        statusData: [],
       });
       setCampaignStatus([]);
       setRecentActivity([]);
@@ -308,7 +313,10 @@ function StudentDashboardInner() {
           </Tag>
         )}
       <Column gap="16">
+      <Row vertical="center" horizontal="space-between" fillWidth>
         <Heading variant="display-strong-m">Welcome Back, {userName}!</Heading>
+        <Button label="Create Campaign" suffixIcon="plus" onClick={() => router.push("/student/campaigns/new")}/>
+        </Row>
         {showGmailFeedback && (
           <Feedback 
             actionButtonProps={{
@@ -411,47 +419,19 @@ function StudentDashboardInner() {
             }}
             title="Daily Activity (Last 30 Days)"
             description="Track your daily email activity and response rates"
-          />
-          <LineBarChart
+          />          <BarChart
             border="neutral-medium"
-            data-viz="divergent"
             fill
             minHeight={24}
-            data={connectionStats?.monthlyConnectionData?.map((item, index) => {
-              // Create a date for each month (using the 1st of each month)
-              const date = new Date();
-              date.setMonth(date.getMonth() - (2 - index)); // Last 3 months
-              date.setDate(1);
-              date.setHours(0, 0, 0, 0);
-              
-              return {
-                date,
-                'Connections': item.activity,
-                'Acceptance Rate': item.replies,
-                'Response Rate': item.responseRate
-              };
-            }) || []}
-            date={{
-              format: 'MMM yyyy',
-              start: (() => {
-                const d = new Date();
-                d.setMonth(d.getMonth() - 2);
-                d.setDate(1);
-                return d;
-              })(),
-              end: new Date(),
-              selector: true,
-              presets: {
-                display: true,
-                granularity: 'month'
-              }
-            }}
+            data={emailStatusStats?.statusData?.map(item => ({
+              status: item.status,
+              Count: item.count
+            })) || []}
             series={[
-              { key: 'Connections', color: '#0072ff8e' },
-              { key: 'Acceptance Rate', color: '#00b3008e' },
+              { key: 'Count', color: 'blue' }
             ]}
-            title="Monthly Connections"
-            description="Your connection requests and acceptance rate over the last three months"
+            title="Email Status Distribution"
+            description="Breakdown of your email delivery and engagement statuses"
           />
         </Row>
          <Grid columns="2" tabletColumns="1" gap="24" fillWidth>
