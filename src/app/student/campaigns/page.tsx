@@ -174,7 +174,7 @@ export default function StudentCampaignsPage() { // Renamed component for clarit
                     </Row>
 
                     {/* Content */}
-                    <Column gap="16">                      <Column gap="8">
+                    <Column gap="16" fillHeight>                      <Column gap="8">
                         <Text variant="label-default-m" onBackground="neutral-weak">
                           {getInterestsLabel(campaign.type || 'research')}
                         </Text>                        <Column gap="4">

@@ -15,7 +15,7 @@ import {
   Tag,
   Input,
 } from '@/once-ui/components';
-import { Icon } from '@once-ui-system/core';
+import { Icon, InlineCode } from '@once-ui-system/core';
 import { getInboxEmails, InboxEmail } from './actions';
 
 export default function InboxPage() {
@@ -71,15 +71,20 @@ export default function InboxPage() {
       case 'failed': return 'danger';
       default: return 'neutral';
     }
-  };
-
-  const filteredEmails = emails.filter(email => {
+  };  const filteredEmails = emails.filter(email => {
     const matchesSearch = searchQuery === '' || 
       email.professor_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       email.professor_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       email.university.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesStatus = selectedStatus === 'all' || email.status === selectedStatus;
+    let matchesStatus = false;
+    if (selectedStatus === 'all') {
+      matchesStatus = true;
+    } else if (selectedStatus === 'opened') {
+      matchesStatus = !!(email.open_count && email.open_count > 0);
+    } else {
+      matchesStatus = email.status === selectedStatus;
+    }
     
     return matchesSearch && matchesStatus;
   });
@@ -138,18 +143,6 @@ export default function InboxPage() {
             size="s"
             label="All"
             onClick={() => setSelectedStatus('all')}
-          />
-          <Button
-            variant={selectedStatus === 'sent' ? 'primary' : 'tertiary'}
-            size="s"
-            label="Sent"
-            onClick={() => setSelectedStatus('sent')}
-          />
-          <Button
-            variant={selectedStatus === 'delivered' ? 'primary' : 'tertiary'}
-            size="s"
-            label="Delivered"
-            onClick={() => setSelectedStatus('delivered')}
           />
           <Button
             variant={selectedStatus === 'opened' ? 'primary' : 'tertiary'}
@@ -264,9 +257,9 @@ export default function InboxPage() {
                   )}
 
                   {email.open_count && email.open_count > 0 && (
-                    <Text variant="label-default-s" onBackground="warning-weak">
+                    <InlineCode textType='label' textVariant='label-default-xs' onBackground="warning-weak">
                       Opened {email.open_count} {email.open_count === 1 ? 'time' : 'times'}
-                    </Text>
+                    </InlineCode>
                   )}
                 </Column>
               </Row>

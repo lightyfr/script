@@ -52,6 +52,8 @@ import { LuChevronsLeftRight } from "react-icons/lu";
 import { arrow } from "@floating-ui/react-dom";
 import { ImStatsDots } from "react-icons/im";
 import { FaRegClock } from "react-icons/fa";
+import { SiCampaignmonitor } from "react-icons/si";
+import { LuSquareActivity } from "react-icons/lu";
 
 export const iconLibrary: Record<string, IconType> = {
   chevronUp: HiChevronUp,
@@ -104,6 +106,8 @@ export const iconLibrary: Record<string, IconType> = {
   clock: FaRegClock,
   grid: CiGrid41,
   list: FaList,
+  campaign: SiCampaignmonitor,
+  activity: LuSquareActivity,
 };
 
 export type IconLibrary = typeof iconLibrary;
