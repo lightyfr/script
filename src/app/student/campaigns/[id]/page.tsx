@@ -226,13 +226,20 @@ export default function CampaignDetailsPage() {
 
       {/* Emails Section */}
       <Column fillWidth padding="24" border='neutral-alpha-weak' radius="l">
-        <Column gap="24">
-          <Row horizontal="space-between" vertical="center">
+        <Column gap="24">          <Row horizontal="space-between" vertical="center">
             <Heading variant="heading-strong-l">Email Campaign Results</Heading>
-            <Text variant="body-default-s" onBackground="neutral-weak">
-              {emails.length} {emails.length === 1 ? 'email' : 'emails'} sent
-            </Text>
-          </Row>          {emails.length > 0 ? (
+            <Row gap="16" vertical="center">
+              <Text variant="body-default-s" onBackground="neutral-weak">
+                {emails.length} {emails.length === 1 ? 'email' : 'emails'} sent
+              </Text>
+              <Button 
+                href="/student/inbox" 
+                variant="tertiary" 
+                size="s"
+                label="View All Emails"
+              />
+            </Row>
+          </Row>{emails.length > 0 ? (
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(600px, 1fr))', 
