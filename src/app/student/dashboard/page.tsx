@@ -510,9 +510,6 @@ function StudentDashboardInner() {
                   <Heading wrap="nowrap" variant="heading-strong-s">
                     Recent Activity
                   </Heading>
-                  <Button size="s" variant="secondary" suffixIcon="chevronRight">
-                    View All
-                  </Button>
                 </Row>
                 <Column fillWidth borderTop="neutral-medium">
                   {recentActivity.length > 0 ? (
@@ -551,12 +548,6 @@ function StudentDashboardInner() {
         <Row gap="16">
           <Button href="campaigns/new"
             label="Create New Campaign"
-            onClick={() => addToast({ variant: "success", message: "Campaign Created!" })}
-          />
-          <Button
-            variant="secondary"
-            label="View Reports"
-            onClick={() => addToast({ variant: "success", message: "Opening Reports..." })}
           />
         </Row>
       </Column>
