@@ -57,6 +57,11 @@ import { LuSquareActivity } from "react-icons/lu";
 import { VscChecklist } from "react-icons/vsc";
 import { FaMailBulk } from "react-icons/fa";
 import { IoSend } from "react-icons/io5";
+import { BiXCircle } from "react-icons/bi";
+import { GoZap } from "react-icons/go";
+import { FaGifts } from "react-icons/fa";
+import { FaShieldAlt } from "react-icons/fa";
+import { IoLink } from "react-icons/io5";
 
 export const iconLibrary: Record<string, IconType> = {
   chevronUp: HiChevronUp,
@@ -115,6 +120,11 @@ export const iconLibrary: Record<string, IconType> = {
   checklist: VscChecklist,
   mailBulk: FaMailBulk,
   send: IoSend,
+  xCircle: BiXCircle,
+  zap: GoZap,
+  gift: FaGifts,
+  shield: FaShieldAlt,
+  link: IoLink,
 };
 
 export type IconLibrary = typeof iconLibrary;
