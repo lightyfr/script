@@ -54,6 +54,9 @@ import { ImStatsDots } from "react-icons/im";
 import { FaRegClock } from "react-icons/fa";
 import { SiCampaignmonitor } from "react-icons/si";
 import { LuSquareActivity } from "react-icons/lu";
+import { VscChecklist } from "react-icons/vsc";
+import { FaMailBulk } from "react-icons/fa";
+import { IoSend } from "react-icons/io5";
 
 export const iconLibrary: Record<string, IconType> = {
   chevronUp: HiChevronUp,
@@ -108,6 +111,10 @@ export const iconLibrary: Record<string, IconType> = {
   list: FaList,
   campaign: SiCampaignmonitor,
   activity: LuSquareActivity,
+  sparkles: HiOutlineSparkles,
+  checklist: VscChecklist,
+  mailBulk: FaMailBulk,
+  send: IoSend,
 };
 
 export type IconLibrary = typeof iconLibrary;

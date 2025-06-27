@@ -38,6 +38,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({ icon, label, value, varian
         </Text>
 
       </Column>
+      <Column horizontal="center">
       <Icon
         name={
           variant === "success"
@@ -50,5 +51,9 @@ export const ChartCard: React.FC<ChartCardProps> = ({ icon, label, value, varian
         size="l"
         marginBottom="8"
       />
+      <Text variant="body-default-xs" onBackground="neutral-medium">
+      {change}
+      </Text>
+      </Column>
     </Row>
 );

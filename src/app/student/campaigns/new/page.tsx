@@ -345,7 +345,6 @@ export default function NewCampaignPage() {
                 />
               </Column>
 
-              <Line />
 
               {/* Custom Prompt Section - Only show for custom campaigns */}
               {formData.campaignType === 'custom' && (

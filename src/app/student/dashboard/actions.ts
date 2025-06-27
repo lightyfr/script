@@ -118,6 +118,7 @@ export async function getStudentDashboardStats() {
     // Ensure we have all required fields for processDailyData
     created_at: log.created_at,
     status: log.status,
+    open_count: log.open_count || 0,
     // Use type assertion to handle the fact that we know these fields exist in the query
     replied_at: (log as any).replied_at || null,
     sent_at: (log as any).sent_at || log.created_at // Fallback to created_at if sent_at is not available
@@ -155,13 +156,15 @@ function processDailyData(
     status?: string | null; 
     replied_at?: string | null;
     sent_at?: string | null;
+    open_count?: number | null;
   }>
-): Array<{ name: string; date: Date; activity: number; replies: number; responseRate: number }> {
+): Array<{ name: string; date: Date; activity: number; replies: number; opens: number; responseRate: number }> {
   const dailyActivity: { [dateKey: string]: { 
     name: string; 
     date: Date;
     sent: number; // Track sent emails
     replied: number; // Track replies
+    opens: number; // Track opens
   } } = {};
   
   const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
@@ -173,34 +176,41 @@ function processDailyData(
   for (let i = 29; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
-    // Convert to YYYY-MM-DD in local timezone
-    const dateKey = new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
-      .toISOString()
-      .split('T')[0];
+    // Use consistent date key format - YYYY-MM-DD in local timezone
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
+    
     const formattedDate = dateFormatter.format(date);
     dailyActivity[dateKey] = { 
       name: formattedDate, 
       date: new Date(date), // Store the date object for sorting
       sent: 0,
-      replied: 0 
+      replied: 0,
+      opens: 0
     };
   }
 
-
-  // First pass: Count sent emails by date
+  // First pass: Count sent emails and opens by date
   logs.forEach(log => {
     // Use sent_at if available, otherwise fall back to created_at
     const sentDate = log.sent_at || log.created_at;
     // Create date in local timezone
     const date = new Date(sentDate);
-    // Convert to YYYY-MM-DD in local timezone
-    const dateKey = new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
-      .toISOString()
-      .split('T')[0];
+    // Use consistent date key format
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
     
     if (dailyActivity[dateKey]) {
       // Count all logs as sent emails
       dailyActivity[dateKey].sent++;
+      // Add opens if available
+      if (log.open_count && log.open_count > 0) {
+        dailyActivity[dateKey].opens += log.open_count;
+      }
     }
   });
 
@@ -210,8 +220,11 @@ function processDailyData(
       // Use sent_at to attribute the reply to the correct day
       const sentDate = log.sent_at || log.created_at;
       const date = new Date(sentDate);
-      date.setHours(0, 0, 0, 0);
-      const dateKey = date.toISOString().split('T')[0];
+      // Use consistent date key format
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
       
       if (dailyActivity[dateKey]) {
         dailyActivity[dateKey].replied++;
@@ -227,6 +240,7 @@ function processDailyData(
       date: data.date,
       activity: data.sent,
       replies: data.replied,
+      opens: data.opens,
       responseRate: data.sent > 0 ? parseFloat(((data.replied / data.sent) * 100).toFixed(1)) : 0,
     }));
 }
