@@ -62,6 +62,9 @@ import { GoZap } from "react-icons/go";
 import { FaGifts } from "react-icons/fa";
 import { FaShieldAlt } from "react-icons/fa";
 import { IoLink } from "react-icons/io5";
+import { MdOutlineCancel } from "react-icons/md";
+import { FaBell } from "react-icons/fa6";
+import { LiaReplySolid } from "react-icons/lia";
 
 export const iconLibrary: Record<string, IconType> = {
   chevronUp: HiChevronUp,
@@ -125,6 +128,9 @@ export const iconLibrary: Record<string, IconType> = {
   gift: FaGifts,
   shield: FaShieldAlt,
   link: IoLink,
+  x: MdOutlineCancel,
+  bell: FaBell,
+  email_reply: LiaReplySolid,
 };
 
 export type IconLibrary = typeof iconLibrary;

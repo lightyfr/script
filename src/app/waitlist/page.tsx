@@ -193,8 +193,8 @@ export default function WaitlistPage() {
           </Fade>
         )}
         <Column fillWidth horizontal='start' align='start'>
-        <Testimonial2 title="Opportunities started piling up" content="Script sent thousands of personalized emails to real proffessors for me, I literally only had to click a few buttons"
-              name="Adhitya Nadooli" role="Student " link="adhityanadooli.vercel.app" src="/images/dash.png" avatar="/images/adhi.JPG"/>
+        <Testimonial2 title="Opportunities start piling up" content="Script sends thousands of personalized emails to real proffessors for you with a couple clicks"
+ src="/images/dashb.png"/>
         </Column>
         
         <RevealFx delay={0.6}>

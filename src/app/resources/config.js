@@ -92,6 +92,46 @@ const meta = {
       { href: "https://scriptoutreach.com", hrefLang: "en" },
     ],
   },
+  pricing: {
+    path: "/pricing",
+    title: "Pricing - Script AI",
+    description: "Choose the perfect plan for your research outreach needs. Get started with our free tier or upgrade to Pro for unlimited campaigns.",
+    image: "/og/pricing.jpg",
+    canonical: "https://scriptoutreach.com/pricing",
+    robots: "index,follow",
+  },
+  dashboard: {
+    path: "/student/dashboard",
+    title: "Dashboard - Script AI",
+    description: "Your personalized dashboard to manage research opportunities and track your outreach campaigns.",
+    image: "/og/dashboard.jpg",
+    canonical: "https://scriptoutreach.com/student/dashboard",
+    robots: "noindex,nofollow", // Private pages should not be indexed
+  },
+  campaigns: {
+    path: "/student/campaigns",
+    title: "Campaigns - Script AI",
+    description: "Create and manage your research outreach campaigns. Connect with professors and find opportunities.",
+    image: "/og/campaigns.jpg",
+    canonical: "https://scriptoutreach.com/student/campaigns",
+    robots: "noindex,nofollow",
+  },
+  privacy: {
+    path: "/privacy",
+    title: "Privacy Policy - Script AI",
+    description: "Learn how Script AI protects your privacy and handles your data securely.",
+    image: "/og/privacy.jpg",
+    canonical: "https://scriptoutreach.com/privacy",
+    robots: "index,follow",
+  },
+  terms: {
+    path: "/terms",
+    title: "Terms of Service - Script AI",
+    description: "Read our terms of service and understand your rights and responsibilities when using Script AI.",
+    image: "/og/terms.jpg",
+    canonical: "https://scriptoutreach.com/terms",
+    robots: "index,follow",
+  },
   // add more routes and reference them in page.tsx
 };
 
@@ -111,4 +151,24 @@ const social = {
   discord: "https://discord.com/invite/5EyAQ4eNdS",
 };
 
-export { baseURL, font, style, meta, schema, social, effects };
+const socials = [
+  // Links are automatically displayed.
+  // Import new icons in /once-ui/icons.ts
+  {
+    name: 'GitHub',
+    icon: 'github',
+    link: 'https://github.com/selene-yu',
+  },
+  {
+    name: 'LinkedIn',
+    icon: 'linkedin',
+    link: 'https://www.linkedin.com/in/selene-yu',
+  },
+  {
+    name: 'Threads',
+    icon: 'threads',
+    link: 'https://www.threads.com/@selene.yu',
+  },
+]
+
+export { baseURL, font, style, meta, schema, social, socials, effects };

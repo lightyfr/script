@@ -17,14 +17,43 @@ const nextConfig = {
       ],
       bodySizeLimit: '30mb', // or higher, e.g. '20mb'
     },
-  },
-  images: {
+  },  images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'jsldybdbxojaugvnlklz.supabase.co',
         port: '',
         pathname: '/storage/v1/object/public/student-resumes/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.google.com',
+        port: '',
+        pathname: '/s2/favicons/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'favicon.yandex.net',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'icons.duckduckgo.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.gstatic.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.faviconkit.com',
+        port: '',
+        pathname: '/**',
       },
     ],
   },

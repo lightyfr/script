@@ -82,8 +82,8 @@ export default function Home() {
   // Animation variants for the dynamic text
   const textAnimationVariants = {
     initial: { opacity: 0, y: 10 }, // Start transparent and slightly down
-    animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
-    exit: { opacity: 0, y: -10, transition: { duration: 0.3, ease: "easeIn" } }, // Exit transparent and slightly up
+    animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] } },
+    exit: { opacity: 0, y: -10, transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } }, // Exit transparent and slightly up
   };
 
   // Removed old state variables: selectedValue, selectedRange, dialog states, email, password, tags, twoFA, intro
@@ -358,8 +358,8 @@ export default function Home() {
             </Column>
           </Row>
         </Column>
-      <Testimonial2 title="Script literally did it all for me" content="Script sent thousands of personalized emails to real proffessors for me, I literally only had to click a few buttons"
-      name="Adhitya Nadooli" role="Student " link="adhityanadooli.vercel.app" src="/images/dash.png" avatar="/images/adhi.JPG"/>
+    <Testimonial2 title="Opportunities start piling up" content="Script sends thousands of personalized emails to real proffessors for you with a couple clicks"
+ src="/images/dashb.png"/>
         {/* HOW IT WORKS SECTION */}
         <Column fillWidth paddingX="32" paddingY="64" gap="32" horizontal="center" position="relative">
           <Heading as="h2" variant="display-default-l" align="center">
