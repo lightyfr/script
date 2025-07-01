@@ -77,14 +77,29 @@ export default function Home() {
     return () => clearInterval(intervalId); // Cleanup on unmount
   }, []); // Empty dependency array ensures this runs once on mount and cleans up on unmount
 
-  const currentPhrase = dynamicPhrases[phraseIndex];
-
-  // Animation variants for the dynamic text
+  const currentPhrase = dynamicPhrases[phraseIndex];  // Animation variants for the dynamic text
   const textAnimationVariants = {
-    initial: { opacity: 0, y: 10 }, // Start transparent and slightly down
-    animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] } },
-    exit: { opacity: 0, y: -10, transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } }, // Exit transparent and slightly up
-  };
+    initial: { 
+      opacity: 0, 
+      y: 10 
+    },
+    animate: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        duration: 0.5, 
+        ease: [0.4, 0, 0.2, 1] as const
+      } 
+    },
+    exit: { 
+      opacity: 0, 
+      y: -10,
+      transition: { 
+        duration: 0.3, 
+        ease: [0.4, 0, 1, 1] as const
+      } 
+    }
+  } as const;
 
   // Removed old state variables: selectedValue, selectedRange, dialog states, email, password, tags, twoFA, intro
 
