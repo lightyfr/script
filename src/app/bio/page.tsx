@@ -11,9 +11,11 @@ import {
   Fade,
   Heading,
   OgCard,
+  Card,
 } from "@once-ui-system/core";
 import { content } from "./resources/content";
 import { socials } from "./../resources/config"
+import { SmartImage } from "@/once-ui/components";
 
 
 interface LinkItem {
@@ -67,8 +69,45 @@ export default function Home() {
       </Column>
       
       <Column maxWidth="s" gap="24">
+                    <Card
+      fillWidth
+      gap="4"
+      direction="column"
+      radius="l"
+      href="https://scriptoutreach.com/waitlist"
+      background="surface"
+      border="neutral-alpha-medium"
+    >
+        <SmartImage
+          radius="l"
+          fill
+          aspectRatio="16/9"
+          border="neutral-alpha-weak"
+          src="/images/home.jpg"
+        />
+      <Column fillWidth paddingX="12" paddingY="12" gap="8">
+          <Row fillWidth gap="8" vertical="center">
+            <SmartImage src={"/images/script-logo-main.png"} width={1.5} height={1.5}/>
+                <Text variant="label-default-s" onBackground="neutral-weak">
+                  scriptoutreach.com/waitlist
+                </Text>
+          </Row>
+        
+        <Column fillWidth gap="2">
+            <Text variant="label-default-s">
+             Script Waitlist
+            </Text>
+              <Text variant="label-default-s" onBackground="neutral-weak">
+                The waitlist to join Script AI, the ultimate research discovery tool
+              </Text>
+        </Column>
+      </Column>
+    </Card></Column>
+      
+      <Column maxWidth="s" gap="24">
         {content.links?.length > 0 && (
           <>
+
             {(content.links as LinkItem[]).map((link, index) => (
               <OgCard
                 key={index}
