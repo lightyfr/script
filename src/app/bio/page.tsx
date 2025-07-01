@@ -28,7 +28,7 @@ interface LinkItem {
 
 export default function Home() {
   return (
-    <Column fillWidth horizontal="center" padding="16" data-theme="dark">
+    <Column fillWidth horizontal="center" padding="16">
       <Column maxWidth="m" aspectRatio="2/1" marginBottom="40">
         {content.cover && (
           <Row fill position="absolute" left="0" top="0" radius="xl" overflow="hidden" border="neutral-alpha-weak">
