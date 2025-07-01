@@ -1,5 +1,5 @@
 // IMPORTANT: Replace with your own domain address - it's used for SEO in meta tags and schema
-const baseURL = "https://script.ai";
+const baseURL = "https://scriptoutreach.com";
 
 // Import and set font for each variant
 import { Geist } from "next/font/google";
@@ -84,12 +84,12 @@ const meta = {
   home: {
     path: "/",
     title: "Script AI",
-    description: "An open-source design system and component library for Next.js that emphasizes easy styling and accessibility in UI development.",
+    description: "A outreach tool built for students to find research and general opportunities.",
     image: "/og/home.jpg",
-    canonical: "https://once-ui.com",
+    canonical: "https://scriptoutreach.com",
     robots: "index,follow",
     alternates: [
-      { href: "https://once-ui.com", hrefLang: "en" },
+      { href: "https://scriptoutreach.com", hrefLang: "en" },
     ],
   },
   // add more routes and reference them in page.tsx
@@ -107,7 +107,7 @@ const schema = {
 // social links
 const social = {
   twitter: "https://www.twitter.com/_onceui",
-  linkedin: "https://www.linkedin.com/company/once-ui/",
+  linkedin: "https://www.linkedin.com/company/scriptoutreach/",
   discord: "https://discord.com/invite/5EyAQ4eNdS",
 };
 
