@@ -8,7 +8,7 @@ import { Background, Column, Flex, ToastProvider, ThemeProvider } from "@/once-u
 
 import { Analytics } from "@vercel/analytics/next"
 import { opacity, SpacingToken } from "@/once-ui/types";
-import { Meta, Schema } from "@/once-ui/modules";
+import { Meta, Schema } from "@once-ui-system/core";
 import {
   ClerkProvider,
   SignInButton,
@@ -24,7 +24,6 @@ export async function generateMetadata() {
     description: meta.home.description,
     baseURL: baseURL,
     path: meta.home.path,
-    canonical: meta.home.canonical,
     image: meta.home.image,
     robots: meta.home.robots,
     alternates: meta.home.alternates,
@@ -63,6 +62,7 @@ export default function RootLayout({
         <Schema
           as="webPage"
           baseURL={baseURL}
+          image="/og/home.jpg"
           title={meta.home.title}
           description={meta.home.description}
           path={meta.home.path}

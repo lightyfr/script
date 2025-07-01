@@ -85,8 +85,7 @@ const meta = {
     path: "/",
     title: "Script AI",
     description: "A outreach tool built for students to find research and general opportunities.",
-    image: "/og/home.jpg",
-    canonical: "https://scriptoutreach.com",
+    image: "/home.jpg",
     robots: "index,follow",
     alternates: [
       { href: "https://scriptoutreach.com", hrefLang: "en" },
