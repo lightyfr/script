@@ -26,7 +26,8 @@ import {
     SignedOut,
     UserButton,
   } from '@clerk/nextjs'
-import { useUser } from '@clerk/nextjs';
+import { useUser, useAuth } from '@clerk/nextjs';
+
 // Define menu groups for the MegaMenu
 const staticMenuGroups: MenuGroup[] = [ // Renamed to staticMenuGroups
   { label: "Features", href: "/features", sections: [
@@ -56,7 +57,45 @@ export const Header: React.FC<HeaderProps> = ({ animateOnMount = false }) => {
     }
   }, [animateOnMount]);
 
-  const { user } = useUser();
+  const { user, isLoaded: userLoaded, isSignedIn } = useUser();
+  const { isLoaded: authLoaded, userId } = useAuth();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 Clerk Debug - User Hook:', {
+      user: user ? { id: user.id, firstName: user.firstName, email: user.primaryEmailAddress?.emailAddress } : null,
+      isLoaded: userLoaded,
+      isSignedIn,
+    });
+    
+    console.log('🔍 Clerk Debug - Auth Hook:', {
+      isLoaded: authLoaded,
+      userId,
+    });
+
+    console.log('🔍 Clerk Debug - Environment:', {
+      publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.substring(0, 20) + '...',
+      hasPublishableKey: !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      keyFormat: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith('pk_'),
+      keyType: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith('pk_test_') ? 'test' : 
+               process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith('pk_live_') ? 'live' : 'unknown',
+      keyLength: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.length || 0,
+    });
+
+    console.log('🔍 Clerk Debug - Overall State:', {
+      bothLoaded: userLoaded && authLoaded,
+      authState: isSignedIn ? 'signed-in' : 'signed-out',
+      readyToRender: userLoaded && authLoaded,
+      currentDomain: typeof window !== 'undefined' ? window.location.origin : 'server-side',
+    });
+
+    // Additional debugging for component render state
+    console.log('🔍 Clerk Debug - Component State:', {
+      shouldShowSignedIn: userLoaded && authLoaded && isSignedIn,
+      shouldShowSignedOut: userLoaded && authLoaded && !isSignedIn,
+      waitingForLoad: !userLoaded || !authLoaded,
+    });
+  }, [user, userLoaded, isSignedIn, authLoaded, userId]);
 
   const handleMenuClick = (e: React.MouseEvent) => {
     e.preventDefault();
