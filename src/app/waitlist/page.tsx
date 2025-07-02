@@ -119,13 +119,13 @@ export default function WaitlistPage() {
     <Column gap="xl" horizontal='center' align="center">
       <Header />
       
-      <Column align="center" marginTop='xl' horizontal='center' paddingY="xl" paddingX="m" gap="xl">
+      <Column align="center" maxWidth="m" marginTop='xl' horizontal='center' paddingY="xl" paddingX="m" gap="xl">
         
           <Column gap="l">
-          <Heading paddingTop='l' variant='display-default-l' align="center">
+          <Heading paddingTop='l' variant='display-default-l' align="center" wrap='balance'>
             Be the first to know when we launch
           </Heading>
-          <Text size="l" align="center"onBackground="neutral-weak">
+          <Text size="l" wrap='balance' align="center"onBackground="neutral-weak">
             We're working hard to bring you an amazing experience. Join our waitlist to get early access and exclusive updates.
           </Text>
           </Column>
@@ -183,9 +183,9 @@ export default function WaitlistPage() {
               <Column fill align="center" gap="m">
                 <Row horizontal='center' gap="m" paddingBottom='l'>
                   <Icon name="checkCircle" size="xl" onBackground="success-strong" />
-                  <Heading>You're on the list!</Heading>
+                  <Heading wrap='balance'>You're on the list!</Heading>
                 </Row>
-                <Text>
+                <Text wrap='balance'>
                   Thanks for joining our waitlist. We'll keep you updated on our launch progress and let you know as soon as you can get started.
                 </Text>
               </Column>
